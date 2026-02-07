@@ -1,5 +1,5 @@
 {
-  "name": "NikeFlow Sales Manager",
+  "name": "App6",
   "description": "A high-performance sales and inventory management system with a sleek Nike-inspired dark theme. Features role-based access, automated stock control, credit tracking ('Fiado'), and Gemini-powered product image editing.",
   "requestFramePermissions": [
     "camera",
