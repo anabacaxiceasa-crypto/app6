@@ -277,9 +277,13 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
           <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-1 italic">Total Recebido</p>
           <h3 className="text-3xl font-black italic text-nike">R$ {stats.totalReceived.toFixed(2)}</h3>
         </div>
-        <div className="bg-nike text-black p-8 rounded-[40px] group transition-all">
+        <div className="bg-nike text-black p-8 rounded-[40px] group transition-all relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-16 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
           <p className="text-[10px] font-black uppercase opacity-60 tracking-widest mb-1 italic">Saldo Devedor Atual</p>
           <h3 className="text-3xl font-black italic">R$ {stats.netPending.toFixed(2)}</h3>
+          <button onClick={openPaymentModal} className="absolute bottom-4 right-4 bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:scale-105 transition-transform flex items-center gap-2">
+            <DollarSign size={14} /> Receber Pagamento
+          </button>
         </div>
       </div>
 
