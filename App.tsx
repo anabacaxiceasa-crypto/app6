@@ -15,15 +15,17 @@ import UserManagement from './views/UserManagement';
 import Settings from './views/Settings';
 import Analytics from './views/Analytics';
 import Expenses from './views/Expenses';
-import { 
-  Loader2, 
-  AlertCircle, 
-  ArrowRight, 
-  User as UserIcon, 
-  Lock, 
+import CratesManager from './views/CratesManager';
+import {
+  Loader2,
+  AlertCircle,
+  ArrowRight,
+  User as UserIcon,
+  Lock,
   ShoppingCart,
   Shield,
-  Key
+  Key,
+  Package
 } from 'lucide-react';
 
 type AuthRoleTab = 'admin' | 'seller';
@@ -32,9 +34,9 @@ const BrandLogo = ({ size = "w-48 h-48" }: { size?: string }) => (
   <div className={`${size} relative group flex items-center justify-center mx-auto text-center`}>
     <div className="absolute inset-0 bg-nike/20 blur-[60px] rounded-full scale-150 group-hover:bg-nike/40 transition-all duration-700 animate-pulse"></div>
     <div className="relative w-full h-full rounded-full border-4 border-nike shadow-[0_0_50px_rgba(226,255,0,0.4)] overflow-hidden bg-white flex items-center justify-center mx-auto">
-      <img 
-        src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/pineapple-logo.png" 
-        alt="A.M Abacaxi" 
+      <img
+        src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/pineapple-logo.png"
+        alt="A.M Abacaxi"
         className="w-full h-full object-cover scale-110"
         onError={(e) => {
           (e.target as HTMLImageElement).src = "https://img.icons8.com/color/512/pineapple.png";
@@ -52,7 +54,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [settings, setSettings] = useState<SystemSettings>({ id: 'default', app_name: 'A.M ABACAXI', maintenance_mode: false });
-  
+
   const [form, setForm] = useState({
     email: '',
     password: ''
@@ -85,7 +87,7 @@ const App: React.FC = () => {
         .select('*')
         .eq('id', userId)
         .single();
-      
+
       if (profile && !error) {
         setUserProfile(profile);
         // Garantia de segurança: Se for vendedor, redireciona pro PDV
@@ -106,12 +108,12 @@ const App: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ 
-      email: form.email.trim(), 
-      password: form.password 
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: form.email.trim(),
+      password: form.password
     });
-    
+
     if (authError) {
       setError('Acesso negado. Verifique e-mail e senha.');
       setIsLoading(false);
@@ -120,31 +122,31 @@ const App: React.FC = () => {
 
     if (data.user) {
       const { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
-      
+
       if (profile) {
-          // Check de Role forçado
-          if (authRole === 'admin' && profile.role !== UserRole.ADMIN) {
-            await supabase.auth.signOut();
-            setError('Este login não possui privilégios ADMINISTRATIVOS.');
-            setIsLoading(false);
-            return;
-          }
-          if (authRole === 'seller' && profile.role !== UserRole.SELLER) {
-            await supabase.auth.signOut();
-            setError('Login MASTER detectado. Use o portal administrativo.');
-            setIsLoading(false);
-            return;
-          }
-          // Check de Manutenção
-          if (profile.role === UserRole.SELLER && settings.maintenance_mode) {
-            await supabase.auth.signOut();
-            setError('SISTEMA EM MANUTENÇÃO. Contate o administrador.');
-            setIsLoading(false);
-            return;
-          }
+        // Check de Role forçado
+        if (authRole === 'admin' && profile.role !== UserRole.ADMIN) {
+          await supabase.auth.signOut();
+          setError('Este login não possui privilégios ADMINISTRATIVOS.');
+          setIsLoading(false);
+          return;
+        }
+        if (authRole === 'seller' && profile.role !== UserRole.SELLER) {
+          await supabase.auth.signOut();
+          setError('Login MASTER detectado. Use o portal administrativo.');
+          setIsLoading(false);
+          return;
+        }
+        // Check de Manutenção
+        if (profile.role === UserRole.SELLER && settings.maintenance_mode) {
+          await supabase.auth.signOut();
+          setError('SISTEMA EM MANUTENÇÃO. Contate o administrador.');
+          setIsLoading(false);
+          return;
+        }
       } else {
-         await supabase.auth.signOut();
-         setError('Conta não vinculada ao banco de dados corporativo.');
+        await supabase.auth.signOut();
+        setError('Conta não vinculada ao banco de dados corporativo.');
       }
     }
     setIsLoading(false);
@@ -158,8 +160,8 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     const isSeller = userProfile?.role === UserRole.SELLER;
-    const adminOnlyTabs = ['dashboard', 'analytics', 'cashier', 'expenses', 'products', 'damaged', 'customers', 'payments', 'users', 'settings'];
-    
+    const adminOnlyTabs = ['dashboard', 'analytics', 'cashier', 'expenses', 'products', 'damaged', 'customers', 'payments', 'users', 'settings', 'crates'];
+
     // Hard check: Vendedores nunca acessam abas de admin, mesmo via URL/Estado
     if (isSeller && adminOnlyTabs.includes(activeTab)) {
       return <SalesPOS currentUser={userProfile} />;
@@ -178,6 +180,7 @@ const App: React.FC = () => {
       case 'payments': return <PaymentMethods />;
       case 'users': return <UserManagement />;
       case 'settings': return <Settings />;
+      case 'crates': return <CratesManager />;
       default: return <Dashboard />;
     }
   };
@@ -201,14 +204,14 @@ const App: React.FC = () => {
 
           <div className="bg-[#080808] border border-zinc-900 rounded-[48px] shadow-2xl backdrop-blur-3xl overflow-hidden mx-auto">
             <div className="flex border-b border-zinc-900">
-              <button 
+              <button
                 onClick={() => setAuthRole('admin')}
                 className={`flex-1 py-7 flex items-center justify-center gap-3 transition-all duration-500 ${authRole === 'admin' ? 'bg-nike text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
                 <Shield size={20} />
                 <span className="text-[11px] font-black uppercase tracking-widest italic">Admin Master</span>
               </button>
-              <button 
+              <button
                 onClick={() => setAuthRole('seller')}
                 className={`flex-1 py-7 flex items-center justify-center gap-3 transition-all duration-500 ${authRole === 'seller' ? 'bg-white text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
@@ -222,45 +225,44 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <div className="relative group">
                     <UserIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-nike transition-colors" size={20} />
-                    <input 
-                      type="email" 
-                      placeholder="E-mail Corporativo" 
-                      className="w-full bg-black border border-zinc-800 rounded-3xl p-6 pl-16 text-sm font-bold focus:border-nike outline-none transition-all placeholder:text-zinc-800" 
-                      value={form.email} 
-                      onChange={(e) => setForm({...form, email: e.target.value})} 
-                      required 
+                    <input
+                      type="email"
+                      placeholder="E-mail Corporativo"
+                      className="w-full bg-black border border-zinc-800 rounded-3xl p-6 pl-16 text-sm font-bold focus:border-nike outline-none transition-all placeholder:text-zinc-800"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      required
                     />
                   </div>
                   <div className="relative group">
                     <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-nike transition-colors" size={20} />
-                    <input 
-                      type="password" 
-                      placeholder="Senha de Acesso" 
-                      className="w-full bg-black border border-zinc-800 rounded-3xl p-6 pl-16 text-sm font-bold focus:border-nike outline-none transition-all placeholder:text-zinc-800" 
-                      value={form.password} 
-                      onChange={(e) => setForm({...form, password: e.target.value})} 
-                      required 
+                    <input
+                      type="password"
+                      placeholder="Senha de Acesso"
+                      className="w-full bg-black border border-zinc-800 rounded-3xl p-6 pl-16 text-sm font-bold focus:border-nike outline-none transition-all placeholder:text-zinc-800"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      required
                     />
                   </div>
                 </div>
-                
+
                 {error && (
                   <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-3xl flex items-center gap-4 animate-in shake">
-                    <AlertCircle size={20} className="text-red-500 shrink-0"/>
+                    <AlertCircle size={20} className="text-red-500 shrink-0" />
                     <p className="text-red-500 text-[11px] font-black uppercase leading-tight">{error}</p>
                   </div>
                 )}
 
-                <button 
-                  type="submit" 
-                  disabled={isLoading} 
-                  className={`w-full py-7 font-black italic text-2xl rounded-3xl transition-all flex items-center justify-center gap-3 uppercase tracking-tighter ${
-                    authRole === 'admin' 
-                    ? 'bg-nike text-black shadow-lg shadow-nike/20' 
-                    : 'bg-white text-black hover:bg-zinc-200'
-                  } hover:scale-[1.03] active:scale-[0.97]`}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`w-full py-7 font-black italic text-2xl rounded-3xl transition-all flex items-center justify-center gap-3 uppercase tracking-tighter ${authRole === 'admin'
+                      ? 'bg-nike text-black shadow-lg shadow-nike/20'
+                      : 'bg-white text-black hover:bg-zinc-200'
+                    } hover:scale-[1.03] active:scale-[0.97]`}
                 >
-                  {isLoading ? <Loader2 className="animate-spin" size={28}/> : (
+                  {isLoading ? <Loader2 className="animate-spin" size={28} /> : (
                     <>
                       {authRole === 'admin' ? 'ENTRAR COMO MASTER' : 'INICIAR TURNO'}
                       <ArrowRight size={28} />
