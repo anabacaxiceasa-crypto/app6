@@ -44,6 +44,11 @@ CREATE TABLE IF NOT EXISTS public.${TABLES.CUSTOMER_PAYMENTS} (
 ALTER TABLE IF EXISTS public.${TABLES.SALES} 
 ALTER COLUMN customer_id DROP NOT NULL;
 
+-- 2.1 ADICIONAR COLUNAS DE CAIXAS (CRATES)
+ALTER TABLE IF EXISTS public.${TABLES.CUSTOMERS} ADD COLUMN IF NOT EXISTS crates_balance int DEFAULT 0;
+ALTER TABLE IF EXISTS public.${TABLES.SALES} ADD COLUMN IF NOT EXISTS crates_in int DEFAULT 0;
+ALTER TABLE IF EXISTS public.${TABLES.SALES} ADD COLUMN IF NOT EXISTS crates_out int DEFAULT 0;
+
 -- 3. HABILITAR RLS E POLÍTICAS
 ALTER TABLE public.${TABLES.CUSTOMER_PAYMENTS} ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Acesso Irrestrito Autenticado Payments" ON public.${TABLES.CUSTOMER_PAYMENTS};
@@ -52,7 +57,7 @@ CREATE POLICY "Acesso Irrestrito Autenticado Payments" ON public.${TABLES.CUSTOM
 -- 4. ATUALIZAR CAIXA DE ESQUEMA (Resolve erro de Cache do esquema)
 NOTIFY pgrst, 'reload schema';
 
--- 5. RECRIAR FUNÇÃO RPC PARA VENDAS
+-- 5. RECRIAR FUNÇÃO RPC PARA VENDAS COMPLETA
 CREATE OR REPLACE FUNCTION public.process_sale(sale_data jsonb)
 RETURNS void 
 LANGUAGE plpgsql
@@ -61,16 +66,21 @@ AS $$
 DECLARE
     item jsonb;
     cust_id uuid;
+    c_in int;
+    c_out int;
 BEGIN
     cust_id := NULL;
     IF (sale_data->>'customerId') IS NOT NULL AND (sale_data->>'customerId') != '' AND (sale_data->>'customerId') != 'null' THEN
         cust_id := (sale_data->>'customerId')::uuid;
     END IF;
 
+    c_in := COALESCE((sale_data->>'cratesIn')::int, 0);
+    c_out := COALESCE((sale_data->>'cratesOut')::int, 0);
+
     INSERT INTO public.${TABLES.SALES} (
         date, customer_id, customer_name, seller_id, seller_name, 
         items, total_amount, global_discount, global_surcharge, 
-        payment_method, due_date, status
+        payment_method, due_date, status, crates_in, crates_out
     )
     VALUES (
         (sale_data->>'date')::timestamptz,
@@ -84,8 +94,17 @@ BEGIN
         COALESCE((sale_data->>'globalSurcharge')::numeric, 0),
         sale_data->>'paymentMethod',
         (CASE WHEN sale_data->>'dueDate' IS NULL OR sale_data->>'dueDate' = '' THEN NULL ELSE (sale_data->>'dueDate')::date END),
-        COALESCE(sale_data->>'status', 'PAID')
+        COALESCE(sale_data->>'status', 'PAID'),
+        c_in,
+        c_out
     );
+
+    -- ATUALIZAR SALDO DE CAIXAS DO CLIENTE SE HOUVER MOVIMENTACAO
+    IF cust_id IS NOT NULL AND (c_in > 0 OR c_out > 0) THEN
+        UPDATE public.${TABLES.CUSTOMERS}
+        SET crates_balance = COALESCE(crates_balance, 0) + c_out - c_in
+        WHERE id = cust_id;
+    END IF;
 
     FOR item IN SELECT * FROM jsonb_array_elements(sale_data->'items')
     LOOP
@@ -105,7 +124,7 @@ $$;
     if (error || !data) return { id: 'default', app_name: 'A.M ABACAXI', maintenance_mode: false };
     return data;
   },
-  
+
   saveSettings: async (settings: SystemSettings) => {
     const { error } = await supabase.from(TABLES.SETTINGS).upsert(settings);
     if (error) throw error;
@@ -116,7 +135,7 @@ $$;
     if (error) return [];
     return data || [];
   },
-  
+
   saveUser: async (user: User) => {
     const { error } = await supabase.from(TABLES.USERS).upsert({
       id: user.id,
@@ -156,7 +175,7 @@ $$;
     };
     if ('costPrice' in payload) delete payload.costPrice;
     if ('imageUrl' in payload) delete payload.imageUrl;
-    
+
     const { error } = await supabase.from(TABLES.PRODUCTS).upsert(payload);
     if (error) throw error;
   },
@@ -180,7 +199,7 @@ $$;
   getSales: async (): Promise<Sale[]> => {
     const { data, error } = await supabase.from(TABLES.SALES).select('*');
     if (error) return [];
-    
+
     return (data || []).map(s => ({
       id: s.id,
       date: s.date,
@@ -194,7 +213,9 @@ $$;
       globalSurcharge: safeNumber(s.global_surcharge),
       paymentMethod: s.payment_method,
       dueDate: s.due_date,
-      status: s.status
+      status: s.status,
+      cratesIn: safeNumber(s.crates_in),
+      cratesOut: safeNumber(s.crates_out)
     }));
   },
 
@@ -204,11 +225,13 @@ $$;
       customerId: (!sale.customerId || sale.customerId === '' || sale.customerId === 'null') ? null : sale.customerId,
       customerName: sale.customerName || 'Cliente Balcão',
       globalDiscount: sale.globalDiscount || 0,
-      globalSurcharge: sale.globalSurcharge || 0
+      globalSurcharge: sale.globalSurcharge || 0,
+      cratesIn: sale.cratesIn || 0,
+      cratesOut: sale.cratesOut || 0
     };
 
     const { error: rpcError } = await supabase.rpc('process_sale', { sale_data: normalizedSale });
-    
+
     if (rpcError) {
       const { error: insertError } = await supabase.from(TABLES.SALES).insert([{
         date: normalizedSale.date,
@@ -224,9 +247,9 @@ $$;
         due_date: normalizedSale.dueDate || null,
         status: normalizedSale.status
       }]);
-      
+
       if (insertError) throw insertError;
-      
+
       for (const item of normalizedSale.items) {
         if (item.productId !== 'AVULSO') {
           const { data: prod } = await supabase.from(TABLES.PRODUCTS).select('stock').eq('id', item.productId).single();

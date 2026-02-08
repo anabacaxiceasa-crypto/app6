@@ -58,6 +58,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
+  crates_balance?: number;
 }
 
 export interface CustomerPayment {
@@ -94,6 +95,8 @@ export interface Sale {
   paymentMethod: PaymentMethod;
   dueDate?: string;
   status: 'PAID' | 'PENDING' | 'CANCELLED';
+  cratesIn?: number;
+  cratesOut?: number;
 }
 
 export interface DamagedGood {
