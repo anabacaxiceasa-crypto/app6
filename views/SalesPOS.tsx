@@ -347,6 +347,14 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
                 <option value="">Balcão (Geral)</option>
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {selectedCustomer?.name === 'Feirão Supermercado' && (
+                <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl flex gap-3 items-start">
+                  <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-blue-200 font-bold uppercase leading-relaxed">
+                    Tem três lojas: uma em Lagoa Seca, outra em Puxinanã e outra em Pocinhos.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-black text-zinc-500 pl-1">Pagamento</label>
