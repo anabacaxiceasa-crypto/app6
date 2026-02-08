@@ -19,7 +19,8 @@ import {
   Receipt,
   User as UserIcon,
   Clock,
-  ShieldAlert
+  ShieldAlert,
+  Info
 } from 'lucide-react';
 import { DB } from '../db';
 import { Product, Customer, SaleItem, PaymentMethod, Sale, User } from '../types';
