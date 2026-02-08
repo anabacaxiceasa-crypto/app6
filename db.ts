@@ -2,8 +2,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { User, Product, Customer, Sale, UserRole, DamagedGood, SystemSettings, SaleItem, Expense, CustomerPayment } from './types';
 
-const SUPABASE_URL = 'https://dcnkwosckxryjiwbtklx.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_yKvZMRbRTngEbGUhnC3dDw_3O7KBgzl';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error("Supabase keys missing! Check .env.local");
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
