@@ -59,6 +59,10 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saleSuccessInfo, setSaleSuccessInfo] = useState<{ total: number; change: number } | null>(null);
 
+  // Item Editing State
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [itemEditForm, setItemEditForm] = useState<SaleItem | null>(null);
+
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -189,6 +193,25 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
     }));
   };
 
+  const openItemEdit = (index: number) => {
+    setEditingItemIndex(index);
+    setItemEditForm({ ...cart[index] });
+  };
+
+  const saveItemEdit = () => {
+    if (editingItemIndex === null || !itemEditForm) return;
+
+    setCart(prev => prev.map((item, idx) => {
+      if (idx === editingItemIndex) {
+        const total = (itemEditForm.quantity * itemEditForm.unitPrice) - (itemEditForm.discount || 0) + (itemEditForm.surcharge || 0);
+        return { ...itemEditForm, total: Math.max(0, total) };
+      }
+      return item;
+    }));
+    setEditingItemIndex(null);
+    setItemEditForm(null);
+  };
+
   const handleUpdateSale = async () => {
     if (!editingSale) return;
     setIsSaving(true);
@@ -277,8 +300,9 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {cart.map((item, idx) => (
             <div key={`${item.productId}-${idx}`} className="bg-zinc-900/50 p-4 rounded-[24px] space-y-3 border border-zinc-800/50">
-              <div className="flex justify-between items-start">
-                <span className="font-bold text-xs truncate uppercase text-zinc-300 flex-1 pr-2">{item.productName}</span>
+              <span className="font-bold text-xs truncate uppercase text-zinc-300 flex-1 pr-2">{item.productName}</span>
+              <div className="flex gap-1">
+                <button onClick={() => openItemEdit(idx)} className="text-zinc-600 hover:text-nike"><Edit3 size={16} /></button>
                 <button onClick={() => removeFromCart(item.productId)} className="text-zinc-600 hover:text-red-500"><Trash2 size={16} /></button>
               </div>
               <div className="flex items-center justify-between">
@@ -475,6 +499,81 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
             <button onClick={handleUpdateSale} disabled={isSaving} className="w-full py-5 bg-nike text-black rounded-2xl font-black uppercase italic flex items-center justify-center gap-2">
               {isSaving ? <Loader2 className="animate-spin" /> : <Save size={18} />} Salvar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ITEM EDIT MODAL */}
+      {editingItemIndex !== null && itemEditForm && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+          <div className="bg-[#111] border border-zinc-800 w-full max-w-md rounded-[40px] p-8 space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-black italic uppercase flex items-center gap-2"><Edit3 className="text-nike" /> Detalhes do Item</h3>
+              <button onClick={() => setEditingItemIndex(null)} className="text-zinc-500 hover:text-white"><X size={24} /></button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2">Produto</label>
+                <div className="p-4 bg-zinc-900 rounded-2xl border border-zinc-800 text-white font-bold text-sm uppercase">
+                  {itemEditForm.productName}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2">Preço Unit. (R$)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-nike"
+                    value={itemEditForm.unitPrice}
+                    onChange={(e) => setItemEditForm({ ...itemEditForm, unitPrice: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2">Quantidade</label>
+                  <input
+                    type="number"
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-4 text-white font-bold outline-none focus:border-nike"
+                    value={itemEditForm.quantity}
+                    onChange={(e) => setItemEditForm({ ...itemEditForm, quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-green-500 tracking-widest pl-2">Desconto (R$)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-4 text-green-500 font-bold outline-none focus:border-green-500"
+                    value={itemEditForm.discount}
+                    onChange={(e) => setItemEditForm({ ...itemEditForm, discount: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-orange-500 tracking-widest pl-2">Acréscimo (R$)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-4 text-orange-500 font-bold outline-none focus:border-orange-500"
+                    value={itemEditForm.surcharge}
+                    onChange={(e) => setItemEditForm({ ...itemEditForm, surcharge: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-zinc-800">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-black uppercase text-zinc-500">Total do Item</span>
+                  <span className="text-2xl font-black italic text-white">
+                    R$ {Math.max(0, (itemEditForm.quantity * itemEditForm.unitPrice) - (itemEditForm.discount || 0) + (itemEditForm.surcharge || 0)).toFixed(2)}
+                  </span>
+                </div>
+                <button onClick={saveItemEdit} className="w-full py-4 bg-white text-black font-black italic rounded-2xl hover:scale-[1.02] transition-all uppercase">
+                  Confirmar Alterações
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
