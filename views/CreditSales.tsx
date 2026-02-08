@@ -281,9 +281,11 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
           <div className="absolute top-0 right-0 p-16 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
           <p className="text-[10px] font-black uppercase opacity-60 tracking-widest mb-1 italic">Saldo Devedor Atual</p>
           <h3 className="text-3xl font-black italic">R$ {stats.netPending.toFixed(2)}</h3>
-          <button onClick={openPaymentModal} className="absolute bottom-4 right-4 bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:scale-105 transition-transform flex items-center gap-2">
-            <DollarSign size={14} /> Receber Pagamento
-          </button>
+          {currentUser.role === UserRole.ADMIN && (
+            <button onClick={openPaymentModal} className="absolute bottom-4 right-4 bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:scale-105 transition-transform flex items-center gap-2">
+              <DollarSign size={14} /> Receber Pagamento
+            </button>
+          )}
         </div>
       </div>
 
@@ -322,8 +324,10 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
                 <div className="flex gap-2">
                   <button onClick={() => generateSaleReceiptPDF(s)} className="p-4 bg-zinc-900 rounded-2xl text-zinc-500 hover:text-white" title="Imprimir PDF"><Printer size={18} /></button>
                   <button onClick={() => shareSaleWhatsApp(s)} className="p-4 bg-[#25D366] text-white rounded-2xl" title="WhatsApp"><Share2 size={18} /></button>
-                  <button onClick={() => startEditSale(s)} className="p-4 bg-zinc-900 rounded-2xl text-zinc-500 hover:text-white"><Edit3 size={18} /></button>
-                  {s.status === 'PENDING' && (
+                  {currentUser.role === UserRole.ADMIN && (
+                    <button onClick={() => startEditSale(s)} className="p-4 bg-zinc-900 rounded-2xl text-zinc-500 hover:text-white"><Edit3 size={18} /></button>
+                  )}
+                  {s.status === 'PENDING' && currentUser.role === UserRole.ADMIN && (
                     <button onClick={() => markAsPaid(s.id)} className="p-4 bg-nike text-black font-black italic rounded-2xl uppercase text-xs">Baixar Nota</button>
                   )}
                 </div>

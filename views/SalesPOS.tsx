@@ -420,7 +420,9 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
                     <p className="text-xs text-zinc-500 uppercase font-bold">{sale.paymentMethod} • R$ {sale.totalAmount.toFixed(2)}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => { setEditingSale(JSON.parse(JSON.stringify(sale))); setIsEditModalOpen(true); }} className="p-3 bg-zinc-800 text-white rounded-2xl hover:text-nike transition-all"><Edit3 size={18} /></button>
+                    {currentUser.role === 'ADMIN' && (
+                      <button onClick={() => { setEditingSale(JSON.parse(JSON.stringify(sale))); setIsEditModalOpen(true); }} className="p-3 bg-zinc-800 text-white rounded-2xl hover:text-nike transition-all"><Edit3 size={18} /></button>
+                    )}
                     {currentUser.role === 'ADMIN' && (
                       <button onClick={() => { setSaleToDelete(sale.id); setIsDeleteConfirmOpen(true); }} className="p-3 bg-zinc-800 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18} /></button>
                     )}
