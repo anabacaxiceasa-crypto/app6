@@ -18,6 +18,7 @@ export interface SystemSettings {
   id: string;
   app_name: string;
   maintenance_mode: boolean;
+  total_crates?: number;
 }
 
 export enum PaymentMethod {

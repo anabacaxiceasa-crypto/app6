@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS public.${TABLES.CUSTOMER_PAYMENTS} (
 ALTER TABLE IF EXISTS public.${TABLES.SALES} 
 ALTER COLUMN customer_id DROP NOT NULL;
 
+-- 2.2 ADICIONAR COLUNA EM SETTINGS
+ALTER TABLE IF EXISTS public.${TABLES.SETTINGS} ADD COLUMN IF NOT EXISTS total_crates int DEFAULT 0;
+
 -- 2.1 ADICIONAR COLUNAS DE CAIXAS (CRATES)
 ALTER TABLE IF EXISTS public.${TABLES.CUSTOMERS} ADD COLUMN IF NOT EXISTS crates_balance int DEFAULT 0;
 ALTER TABLE IF EXISTS public.${TABLES.SALES} ADD COLUMN IF NOT EXISTS crates_in int DEFAULT 0;
@@ -121,8 +124,8 @@ $$;
 
   getSettings: async (): Promise<SystemSettings> => {
     const { data, error } = await supabase.from(TABLES.SETTINGS).select('*').single();
-    if (error || !data) return { id: 'default', app_name: 'A.M ABACAXI', maintenance_mode: false };
-    return data;
+    if (error || !data) return { id: 'default', app_name: 'A.M ABACAXI', maintenance_mode: false, total_crates: 0 };
+    return { ...data, total_crates: safeNumber(data.total_crates) };
   },
 
   saveSettings: async (settings: SystemSettings) => {
