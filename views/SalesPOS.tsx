@@ -139,8 +139,6 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
         totalAmount: cartFinalTotal,
         paymentMethod,
         dueDate: paymentMethod === PaymentMethod.CREDIT ? dueDate : undefined,
-        paymentMethod,
-        dueDate: paymentMethod === PaymentMethod.CREDIT ? dueDate : undefined,
         status: paymentMethod === PaymentMethod.CREDIT ? 'PENDING' : 'PAID',
         cratesIn,
         cratesOut
