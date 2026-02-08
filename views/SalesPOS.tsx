@@ -180,7 +180,7 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
 
   const updateQuantity = (productId: string, value: number) => {
     if (productId === 'AVULSO') return;
-    const newQty = Math.max(1, value);
+    const newQty = Math.max(0, value); // Allow 0 for typing
     setCart(prev => prev.map(item => {
       if (item.productId === productId) {
         return { ...item, quantity: newQty, total: (newQty * item.unitPrice) };
@@ -285,11 +285,22 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
                 <div className="flex items-center gap-1 bg-black border border-zinc-800 rounded-full px-2 py-1">
                   <button onClick={() => updateQuantity(item.productId, item.quantity - 1)} className="p-1 text-zinc-400 hover:text-white" disabled={item.productId === 'AVULSO'}><Minus size={12} /></button>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="bg-transparent text-xs font-black w-10 text-center text-white outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={item.quantity}
+                    value={item.quantity === 0 ? '' : item.quantity}
                     disabled={item.productId === 'AVULSO'}
-                    onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') updateQuantity(item.productId, 0);
+                      else {
+                        const parsed = parseInt(val);
+                        if (!isNaN(parsed)) updateQuantity(item.productId, parsed);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (item.quantity <= 0) updateQuantity(item.productId, 1);
+                    }}
                   />
                   <button onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="p-1 text-zinc-400 hover:text-nike" disabled={item.productId === 'AVULSO'}><Plus size={12} /></button>
                 </div>
