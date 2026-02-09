@@ -85,17 +85,15 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
-        .from('nikeflow_users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Use DB abstraction instead of direct Supabase query
+      const users = await DB.getUsers();
+      let profile = users.find(u => u.id === userId);
 
-      if (profile && !error) {
+      if (profile) {
         // Auto-Admin: Hardcode 'ademymoreira@hotmail.com' as ADMIN if not already
         if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
-          await supabase.from('nikeflow_users').update({ role: UserRole.ADMIN }).eq('id', profile.id);
           profile.role = UserRole.ADMIN;
+          await DB.saveUser(profile);
         }
 
         setUserProfile(profile);
@@ -110,23 +108,21 @@ const App: React.FC = () => {
           const isAdmin = user.email === 'ademymoreira@hotmail.com';
           const newProfile = {
             id: user.id,
-            email: user.email,
+            email: user.email!,
             name: isAdmin ? 'Administrador' : 'Novo Usuário',
             username: user.email?.split('@')[0] || 'user',
             role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
           };
 
-          const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
+          // Use DB.saveUser instead of supabase.insert
+          await DB.saveUser(newProfile);
 
-          if (!insertError) {
-            setUserProfile(newProfile);
-            if (newProfile.role === UserRole.SELLER) setActiveTab('pos');
-            return;
-          }
+          setUserProfile(newProfile);
+          if (newProfile.role === UserRole.SELLER) setActiveTab('pos');
+        } else {
+          // Final fallback if creation fails
+          await supabase.auth.signOut();
         }
-
-        // Final fallback if creation fails
-        await supabase.auth.signOut();
       }
     } catch (e) {
       console.error("Erro crítico de segurança:", e);

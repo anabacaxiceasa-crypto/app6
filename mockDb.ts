@@ -42,7 +42,6 @@ const initializeDefaults = () => {
             username: 'admin',
             role: UserRole.ADMIN,
             password_hash: 'admin', // Em produção seria hash real, aqui é simulação
-            password_hash: 'admin', // Em produção seria hash real, aqui é simulação
         };
         setStorage(STORAGE_KEYS.USERS, [adminUser]);
     }
@@ -100,7 +99,6 @@ export const mockSupabase = {
                 name: options?.data?.full_name || 'Novo Usuário',
                 username: email.split('@')[0],
                 role: options?.data?.role || UserRole.SELLER,
-                password_hash: password, // Em produção seria hash
                 password_hash: password, // Em produção seria hash
             };
 
