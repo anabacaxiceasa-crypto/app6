@@ -393,10 +393,12 @@ export const generateProductOutputReportPDF = (sales: Sale[], products: Product[
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Período: ${new Date(startDate).toLocaleDateString()} até ${new Date(endDate).toLocaleDateString()}`, pageWidth / 2, y, { align: 'center' });
+    y += 7;
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, pageWidth / 2, y, { align: 'center' });
     y += 15;
 
     // Aggregate Product Sales
-    const productStats: Record<string, { name: string, qtySold: number, currentStock: number }> = {};
+    const productStats: Record<string, { name: string, qtySold: number, currentStock: number, totalValue: number }> = {};
 
     sales.forEach(s => {
         if (s.status === 'CANCELLED') return;
@@ -406,44 +408,84 @@ export const generateProductOutputReportPDF = (sales: Sale[], products: Product[
                 productStats[item.productId] = {
                     name: item.productName,
                     qtySold: 0,
-                    currentStock: prod ? prod.stock : 0
+                    currentStock: prod ? prod.stock : 0,
+                    totalValue: 0
                 };
             }
             productStats[item.productId].qtySold += item.quantity;
+            productStats[item.productId].totalValue += (item.total || (item.quantity * item.unitPrice));
         });
     });
 
+    // Add products with 0 sales but in stock (Optional, but "Saída" implies sales. Let's stick to sales or active products)
+    // The user asked for "Saída de Produtos" report, so purely sales oriented. 
+    // BUT "Estoque Atual" implies they want to compare.
+    // Let's keep only products that had sales OR are in the list passed (if needed). 
+    // Logic above only takes sold items. Let's iterate ALL products to show everything? 
+    // "Relatório de Saída" usually lists what went out.
+    // But "Estoque Atual" is useful context.
+    // I will stick to "Sold Products" to keep it focused on "Saída".
+
     const sortedProducts = Object.values(productStats).sort((a, b) => b.qtySold - a.qtySold);
 
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Produto', 20, y);
-    doc.text('Qtd Vendida', 120, y, { align: 'right' });
-    doc.text('Estoque Atual', 160, y, { align: 'right' });
-    doc.text('Status', pageWidth - 20, y, { align: 'right' });
+
+    // Columns
+    doc.text('Produto', 15, y); // Adjusted
+    doc.text('Qtd', 100, y, { align: 'right' });
+    doc.text('Estoque', 130, y, { align: 'right' });
+    doc.text('Total (R$)', 160, y, { align: 'right' });
+    doc.text('Status', pageWidth - 15, y, { align: 'right' });
+
     y += 5;
-    doc.line(20, y, pageWidth - 20, y);
+    doc.line(15, y, pageWidth - 15, y);
     y += 10;
 
     doc.setFont('helvetica', 'normal');
 
+    let grandTotalQty = 0;
+    let grandTotalStock = 0; // Only for listed products
+    let grandTotalValue = 0;
+
     sortedProducts.forEach(p => {
         if (y > 270) { doc.addPage(); y = 20; }
 
-        doc.text(p.name.substring(0, 40), 20, y);
-        doc.text(p.qtySold.toString(), 120, y, { align: 'right' });
-        doc.text(p.currentStock.toString(), 160, y, { align: 'right' });
+        doc.text(p.name.substring(0, 35), 15, y);
+        doc.text(p.qtySold.toString(), 100, y, { align: 'right' });
+        doc.text(p.currentStock.toString(), 130, y, { align: 'right' });
+        doc.text(p.totalValue.toFixed(2), 160, y, { align: 'right' });
 
         let status = 'OK';
         if (p.currentStock <= 0) status = 'ESGOTADO';
         else if (p.currentStock < 10) status = 'BAIXO';
 
-        doc.setTextColor(status === 'OK' ? 0 : 200, status === 'OK' ? 100 : 0, 0);
-        doc.text(status, pageWidth - 20, y, { align: 'right' });
+        doc.setTextColor(status === 'OK' ? 0 : 200, status === 'OK' ? 100 : 0, 0); // Green/Red
+        doc.setFontSize(8);
+        doc.text(status, pageWidth - 15, y, { align: 'right' });
+        doc.setFontSize(10);
         doc.setTextColor(0, 0, 0);
+
+        grandTotalQty += p.qtySold;
+        grandTotalStock += p.currentStock;
+        grandTotalValue += p.totalValue;
 
         y += 8;
     });
 
-    doc.save(`Relatorio_Produtos_${startDate}_${endDate}.pdf`);
+    y += 5;
+    doc.line(15, y, pageWidth - 15, y);
+    y += 10;
+
+    // Footer Totals
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAIS GERAIS:', 15, y);
+
+    doc.setFontSize(10);
+    doc.text(`${grandTotalQty}`, 100, y, { align: 'right' });
+    doc.text(`${grandTotalStock}`, 130, y, { align: 'right' }); // Sum of stock of sold items
+    doc.text(`R$ ${grandTotalValue.toFixed(2)}`, 160, y, { align: 'right' });
+
+    doc.save(`Relatorio_Saida_Produtos_${startDate}_${endDate}.pdf`);
 };

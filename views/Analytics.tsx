@@ -16,7 +16,9 @@ import {
   Lightbulb,
   FileText,
   Package,
-  Share2
+  Share2,
+  List,
+  X
 } from 'lucide-react';
 import { DB } from '../db';
 import { Sale, Product, PaymentMethod } from '../types';
@@ -143,6 +145,40 @@ const Analytics: React.FC = () => {
     }));
   }, [filteredSales, startDate, endDate]);
 
+  /* State for Report Modal */
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  /* Report Data Memo */
+  const productOutputData = useMemo(() => {
+    const map: Record<string, { name: string, qtySold: number, stock: number, totalValue: number }> = {};
+
+    filteredSales.forEach(s => {
+      s.items.forEach(item => {
+        if (!map[item.productId]) {
+          const prod = products.find(p => p.id === item.productId);
+          map[item.productId] = {
+            name: item.productName,
+            qtySold: 0,
+            stock: prod ? prod.stock : 0,
+            totalValue: 0
+          };
+        }
+        map[item.productId].qtySold += item.quantity;
+        map[item.productId].totalValue += (item.total || (item.quantity * item.unitPrice));
+      });
+    });
+
+    const list = Object.values(map).sort((a, b) => b.qtySold - a.qtySold);
+
+    const totals = list.reduce((acc, item) => ({
+      qty: acc.qty + item.qtySold,
+      stock: acc.stock + item.stock,
+      value: acc.value + item.totalValue
+    }), { qty: 0, stock: 0, value: 0 });
+
+    return { list, totals };
+  }, [filteredSales, products]);
+
   const askGeminiAdvisor = async () => {
     setIsAiLoading(true);
     const context = {
@@ -205,23 +241,34 @@ const Analytics: React.FC = () => {
           <Share2 size={18} className="group-hover:text-[#25D366]" />
         </button>
 
-        <button
-          onClick={() => generateProductOutputReportPDF(filteredSales, products, startDate, endDate)}
-          className="flex items-center gap-2 px-6 py-4 bg-[#111] border border-zinc-800 rounded-2xl hover:border-nike hover:text-white text-zinc-400 transition-all group"
-        >
-          <Package size={18} className="group-hover:text-nike" />
-          <div className="text-left">
-            <p className="text-[10px] font-black uppercase">Saída de Produtos</p>
-            <p className="text-[8px] font-bold">Vendas vs Estoque</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => shareProductOutputReportWhatsApp(filteredSales, products, startDate, endDate)}
-          className="flex items-center gap-2 px-4 py-4 bg-[#111] border border-zinc-800 rounded-2xl hover:border-[#25D366] text-zinc-400 transition-all group"
-        >
-          <Share2 size={18} className="group-hover:text-[#25D366]" />
-        </button>
+        {/* New Report Group */}
+        <div className="flex items-center gap-2 bg-[#111] border border-zinc-800 rounded-2xl p-1 pr-4">
+          <button
+            onClick={() => generateProductOutputReportPDF(filteredSales, products, startDate, endDate)}
+            className="flex items-center gap-2 px-6 py-3 bg-zinc-900 rounded-xl hover:bg-zinc-800 text-zinc-400 transition-all group"
+          >
+            <Package size={18} className="group-hover:text-nike" />
+            <div className="text-left">
+              <p className="text-[10px] font-black uppercase">PDF Saída</p>
+            </div>
+          </button>
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="p-3 bg-dashed border border-zinc-700 rounded-xl text-zinc-500 hover:text-white hover:border-nike transition-all"
+            title="Visualizar na Tela"
+          >
+            <div className="flex items-center gap-2">
+              <List size={18} />
+              <span className="text-[10px] font-black uppercase">Ver Tabela</span>
+            </div>
+          </button>
+          <button
+            onClick={() => shareProductOutputReportWhatsApp(filteredSales, products, startDate, endDate)}
+            className="p-3 text-zinc-500 hover:text-[#25D366] transition-all"
+          >
+            <Share2 size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -343,6 +390,63 @@ const Analytics: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Output Report Modal */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+          <div className="bg-[#111] border border-zinc-800 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-2xl p-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-2xl font-black italic uppercase text-white">Relatório de Saída</h3>
+                <p className="text-zinc-500 text-xs font-bold uppercase mt-1">
+                  Período: {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+                </p>
+              </div>
+              <button onClick={() => setIsReportModalOpen(false)} className="p-3 hover:bg-zinc-900 rounded-full text-zinc-400 hover:text-white"><X size={24} /></button>
+            </div>
+
+            <div className="overflow-x-auto rounded-3xl border border-zinc-800 mb-6">
+              <table className="w-full text-left">
+                <thead className="bg-[#0a0a0a]">
+                  <tr className="border-b border-zinc-800">
+                    <th className="p-4 text-[10px] font-black uppercase text-zinc-500 tracking-wider">Produto</th>
+                    <th className="p-4 text-[10px] font-black uppercase text-zinc-500 tracking-wider text-right">Qtd Vendida</th>
+                    <th className="p-4 text-[10px] font-black uppercase text-zinc-500 tracking-wider text-right">Estoque Atual</th>
+                    <th className="p-4 text-[10px] font-black uppercase text-zinc-500 tracking-wider text-right">Total Vendido (R$)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-900">
+                  {productOutputData.list.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-zinc-900/50">
+                      <td className="p-4 text-sm font-bold text-white">{item.name}</td>
+                      <td className="p-4 text-sm font-bold text-zinc-300 text-right">{item.qtySold}</td>
+                      <td className={`p-4 text-sm font-bold text-right ${item.stock < 10 ? 'text-red-500' : 'text-zinc-300'}`}>{item.stock}</td>
+                      <td className="p-4 text-sm font-bold text-nike text-right">R$ {item.totalValue.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-zinc-900/50">
+                  <tr>
+                    <td className="p-4 text-xs font-black uppercase text-white">TOTAIS GERAIS</td>
+                    <td className="p-4 text-xs font-black text-white text-right">{productOutputData.totals.qty}</td>
+                    <td className="p-4 text-xs font-black text-white text-right">{productOutputData.totals.stock}</td>
+                    <td className="p-4 text-xs font-black text-white text-right">R$ {productOutputData.totals.value.toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => generateProductOutputReportPDF(filteredSales, products, startDate, endDate)}
+                className="flex items-center gap-2 px-6 py-4 bg-zinc-900 hover:bg-nike hover:text-black text-white font-black uppercase rounded-2xl transition-all"
+              >
+                <Package size={20} /> Baixar PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
