@@ -20,11 +20,15 @@ import {
   User as UserIcon,
   Clock,
   ShieldAlert,
-  Info
+  Info,
+  Printer,
+  Share2
 } from 'lucide-react';
 import { DB } from '../db';
 import { Product, Customer, SaleItem, PaymentMethod, Sale, User } from '../types';
 import { processVoiceSale } from '../services/geminiService';
+import { generateReceiptPDF } from '../services/pdfService';
+import { shareSaleOnWhatsApp } from '../services/whatsappService';
 
 interface SalesPOSProps {
   currentUser: User;
@@ -371,6 +375,23 @@ const SalesPOS: React.FC<SalesPOSProps> = ({ currentUser }) => {
             </div>
           )}
           <div className="pt-2">
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                onClick={() => generateReceiptPDF(cart, selectedCustomer, { total: cartFinalTotal, discount: globalDiscount, surcharge: globalSurcharge }, paymentMethod, currentUser.name)}
+                disabled={cart.length === 0}
+                className="py-4 bg-zinc-800 text-white font-bold uppercase text-xs rounded-2xl flex items-center justify-center gap-2 hover:bg-zinc-700 transition-all disabled:opacity-50"
+              >
+                <Printer size={18} /> Imprimir PDF
+              </button>
+              <button
+                onClick={() => shareSaleOnWhatsApp(cart, selectedCustomer, { total: cartFinalTotal, discount: globalDiscount, surcharge: globalSurcharge }, paymentMethod, currentUser.name)}
+                disabled={cart.length === 0}
+                className="py-4 bg-[#25D366] text-white font-bold uppercase text-xs rounded-2xl flex items-center justify-center gap-2 hover:bg-[#128C7E] transition-all disabled:opacity-50"
+              >
+                <Share2 size={18} /> WhatsApp
+              </button>
+            </div>
+
             <div className="flex justify-between items-baseline mb-4">
               <span className="text-zinc-500 uppercase font-black text-xs tracking-widest italic">Total</span>
               <span className="text-5xl font-black italic text-white">R$ {cartFinalTotal.toFixed(2)}</span>
