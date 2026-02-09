@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  CreditCard, 
-  AlertTriangle, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Users,
+  CreditCard,
+  AlertTriangle,
+  LogOut,
   Menu,
   X,
   Wallet,
@@ -44,7 +44,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, activeTab, setActiveTab
     { id: 'cashier', icon: <Wallet size={20} />, label: 'Caixa Principal', roles: [UserRole.ADMIN] },
     { id: 'expenses', icon: <Receipt size={20} />, label: 'Despesas', roles: [UserRole.ADMIN] },
     { id: 'pos', icon: <ShoppingCart size={20} />, label: 'Vendas (PDV)', roles: [UserRole.ADMIN, UserRole.SELLER] },
-    { id: 'fiado', icon: <CreditCard size={20} />, label: 'Fiado (Crédito)', roles: [UserRole.ADMIN, UserRole.SELLER] },
+    { id: 'fiado', icon: <CreditCard size={20} />, label: 'Fiado (Crédito)', roles: [UserRole.ADMIN] },
     { id: 'products', icon: <Package size={20} />, label: 'Estoque', roles: [UserRole.ADMIN] },
     { id: 'damaged', icon: <AlertTriangle size={20} />, label: 'Avarias', roles: [UserRole.ADMIN] },
     { id: 'customers', icon: <Users size={20} />, label: 'Clientes', roles: [UserRole.ADMIN] },
@@ -61,18 +61,18 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, activeTab, setActiveTab
         <div className="flex flex-col h-full">
           <div className="py-12 flex flex-col items-center justify-center border-b border-zinc-900/50 relative overflow-hidden bg-gradient-to-b from-zinc-900/20 to-transparent">
             <div className="absolute top-0 left-0 w-full h-full bg-nike/5 blur-2xl opacity-20"></div>
-            
+
             <div className="w-24 h-24 relative z-10 mb-6 rounded-full border-2 border-nike shadow-[0_0_30px_rgba(226,255,0,0.2)] flex items-center justify-center bg-white mx-auto">
-              <img 
-                src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/pineapple-logo.png" 
-                alt="Logo" 
+              <img
+                src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/pineapple-logo.png"
+                alt="Logo"
                 className="w-full h-full object-cover scale-110"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "https://img.icons8.com/color/512/pineapple.png";
                 }}
               />
             </div>
-            
+
             <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase z-10 leading-none text-center">{settings.app_name}</h1>
             <p className="text-[9px] text-zinc-500 font-black uppercase tracking-[0.4em] mt-2 z-10 italic text-center">Premium Ceasa System</p>
             <button className="lg:hidden text-zinc-400 absolute top-6 right-6" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
@@ -115,7 +115,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, activeTab, setActiveTab
           <button className="text-white p-2 bg-zinc-900 rounded-xl" onClick={() => setIsSidebarOpen(true)}><Menu size={20} /></button>
           <div className="flex items-center gap-2 mx-auto">
             <div className="w-8 h-8 rounded-full border border-nike/30 overflow-hidden bg-white">
-               <img src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/pineapple-logo.png" className="w-full h-full object-cover" />
+              <img src="https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/pineapple-logo.png" className="w-full h-full object-cover" />
             </div>
             <div className="text-nike font-black italic text-xl tracking-tighter uppercase">{settings.app_name}</div>
           </div>
