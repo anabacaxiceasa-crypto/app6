@@ -289,58 +289,58 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
 
-      {/* MODAL DE CREDENCIAIS GERADAS */ }
-  {
-    showCredentialsModal && (
-      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-        <div className="bg-[#111] border border-nike w-full max-w-md rounded-[40px] p-8 shadow-[0_0_50px_rgba(226,255,0,0.1)] relative">
-          <div className="text-center space-y-4">
-            <div className="w-20 h-20 bg-nike text-black rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check size={40} className="animate-in zoom-in duration-500" />
-            </div>
 
-            <h3 className="text-2xl font-black italic uppercase text-white">Acesso Criado!</h3>
-            <p className="text-zinc-400 text-sm">Tire um print ou anote os dados abaixo para enviar ao vendedor.</p>
-
-            <div className="bg-zinc-900 rounded-3xl p-6 space-y-4 mt-6 border border-zinc-800">
-              <div>
-                <label className="text-[10px] font-bold uppercase text-zinc-500">Vendedor</label>
-                <p className="text-white font-black text-lg italic uppercase">{generatedCredentials.name}</p>
-              </div>
-              <div className="h-px bg-zinc-800"></div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-zinc-500">E-mail de Login</label>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-nike font-mono text-lg truncate">{generatedCredentials.email}</p>
-                  <button onClick={() => navigator.clipboard.writeText(generatedCredentials.email)} className="text-zinc-500 hover:text-white">
-                    <Copy size={16} />
-                  </button>
+      {/* MODAL DE CREDENCIAIS GERADAS */}
+      {
+        showCredentialsModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+            <div className="bg-[#111] border border-nike w-full max-w-md rounded-[40px] p-8 shadow-[0_0_50px_rgba(226,255,0,0.1)] relative">
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 bg-nike text-black rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Check size={40} className="animate-in zoom-in duration-500" />
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-zinc-500">Senha Padrão</label>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-white font-mono text-xl tracking-widest">{generatedCredentials.password}</p>
-                  <button onClick={() => navigator.clipboard.writeText(generatedCredentials.password)} className="text-zinc-500 hover:text-white">
-                    <Copy size={16} />
-                  </button>
+
+                <h3 className="text-2xl font-black italic uppercase text-white">Acesso Criado!</h3>
+                <p className="text-zinc-400 text-sm">Tire um print ou anote os dados abaixo para enviar ao vendedor.</p>
+
+                <div className="bg-zinc-900 rounded-3xl p-6 space-y-4 mt-6 border border-zinc-800">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-zinc-500">Vendedor</label>
+                    <p className="text-white font-black text-lg italic uppercase">{generatedCredentials.name}</p>
+                  </div>
+                  <div className="h-px bg-zinc-800"></div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-zinc-500">E-mail de Login</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-nike font-mono text-lg truncate">{generatedCredentials.email}</p>
+                      <button onClick={() => navigator.clipboard.writeText(generatedCredentials.email)} className="text-zinc-500 hover:text-white">
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-zinc-500">Senha Padrão</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-white font-mono text-xl tracking-widest">{generatedCredentials.password}</p>
+                      <button onClick={() => navigator.clipboard.writeText(generatedCredentials.password)} className="text-zinc-500 hover:text-white">
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                <button
+                  onClick={() => setShowCredentialsModal(false)}
+                  className="w-full py-4 bg-white text-black font-black italic rounded-2xl hover:bg-zinc-200 transition-all uppercase mt-6"
+                >
+                  Concluir
+                </button>
               </div>
             </div>
-
-            <button
-              onClick={() => setShowCredentialsModal(false)}
-              className="w-full py-4 bg-white text-black font-black italic rounded-2xl hover:bg-zinc-200 transition-all uppercase mt-6"
-            >
-              Concluir
-            </button>
           </div>
-        </div>
-      </div>
-    )
-  }
+        )
+      }
     </div >
   );
 };
