@@ -22,6 +22,9 @@ const UserManagement: React.FC = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState({ name: '', email: '', password: '' });
 
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', role: UserRole.SELLER });
+
   useEffect(() => {
     loadUsers();
   }, []);
@@ -94,10 +97,31 @@ const UserManagement: React.FC = () => {
   };
 
   const toggleRole = async (user: User) => {
-    const newRole = user.role === UserRole.ADMIN ? UserRole.SELLER : UserRole.ADMIN;
-    if (confirm(`Alterar cargo de ${user.name} para ${newRole}?`)) {
-      await DB.saveUser({ ...user, role: newRole });
+    // Deprecated in favor of Edit Modal, but kept for quick action if needed, 
+    // or we can remove this function if we only use the modal.
+    // For now, let's open the edit modal instead of immediate toggle.
+    openEditModal(user);
+  };
+
+  const openEditModal = (user: User) => {
+    setEditingUser(user);
+    setEditForm({ name: user.name, role: user.role });
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    try {
+      await DB.saveUser({
+        ...editingUser,
+        name: editForm.name.toUpperCase(),
+        role: editForm.role
+      });
+      setEditingUser(null);
       loadUsers();
+    } catch (err) {
+      alert('Erro ao atualizar usuário.');
     }
   };
 
@@ -185,8 +209,8 @@ const UserManagement: React.FC = () => {
 
             <div className="flex gap-2 z-10">
               <button
-                onClick={() => toggleRole(user)}
-                title="Alterar Cargo"
+                onClick={() => openEditModal(user)}
+                title="Editar Usuário"
                 className="p-4 bg-zinc-900 rounded-2xl text-zinc-500 hover:text-nike transition-all"
               >
                 <Key size={20} />
@@ -341,7 +365,72 @@ const UserManagement: React.FC = () => {
           </div>
         )
       }
-    </div >
+
+      {/* MODAL DE EDIÇÃO */}
+      {editingUser && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+          <div className="bg-[#111] border border-zinc-800 w-full max-w-lg rounded-[40px] p-10 shadow-2xl relative">
+            <div className="flex justify-between items-center mb-8 relative z-10">
+              <h3 className="text-3xl font-black italic uppercase tracking-tighter">Editar Acesso</h3>
+              <button onClick={() => setEditingUser(null)} className="text-zinc-500 hover:text-white">
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Nome Completo</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Cargo de Confiança</label>
+                  <select
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none appearance-none"
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
+                  >
+                    <option value={UserRole.SELLER}>VENDEDOR (Operacional)</option>
+                    <option value={UserRole.FINANCIAL}>FINANCEIRO (Gerencial)</option>
+                    <option value={UserRole.ADMIN}>ADMINISTRADOR (Controle Total)</option>
+                  </select>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-3xl space-y-2 mt-4">
+                  <div className="flex items-center gap-2 text-red-500 mb-2">
+                    <Lock size={16} />
+                    <span className="font-black uppercase text-xs">Redefinição de Senha</span>
+                  </div>
+                  <p className="text-zinc-400 text-[11px] leading-relaxed">
+                    Por segurança, não é possível alterar a senha de outro usuário diretamente por aqui.
+                  </p>
+                  <p className="text-white text-[11px] font-bold">
+                    PARA REDEFINIR A SENHA:
+                  </p>
+                  <ol className="list-decimal pl-4 text-zinc-400 text-[10px] space-y-1">
+                    <li>Exclua este usuário clicando na lixeira.</li>
+                    <li>Crie um novo acesso com o mesmo nome.</li>
+                  </ol>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-5 bg-white text-black font-black italic text-xl rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3 uppercase"
+              >
+                Salvar Alterações
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
