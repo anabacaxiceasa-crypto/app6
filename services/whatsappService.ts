@@ -1,4 +1,4 @@
-import { SaleItem, Customer, Sale } from '../types';
+import { SaleItem, Customer, Sale, CustomerPayment } from '../types';
 
 export const shareSaleOnWhatsApp = (
     cart: SaleItem[],
@@ -94,20 +94,19 @@ export const shareIndividualCreditReportWhatsApp = (customer: Customer, sales: S
     window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
 };
 
-export const shareDateRangeCreditReportWhatsApp = (sales: Sale[], startDate: string, endDate: string) => {
+export const shareFinancialReportWhatsApp = (sales: Sale[], payments: CustomerPayment[], startDate: string, endDate: string) => {
     let message = `*A.M ABACAXI* 🍍\n`;
-    message += `_Relatório de Vendas por Período_\n`;
-    message += `📅 ${new Date(startDate).toLocaleDateString()} até ${new Date(endDate).toLocaleDateString()}\n\n`;
+    message += `_Relatório Financeiro do Período_\n`;
+    message += `📅 ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n`;
 
-    let totalPeriod = 0;
+    let totalSales = sales.reduce((acc, s) => acc + s.totalAmount, 0);
+    let totalPayments = payments.reduce((acc, p) => acc + p.amount, 0);
 
-    sales.forEach(s => {
-        message += `🔹 ${new Date(s.date).toLocaleDateString()} - ${s.customerName}: R$ ${s.totalAmount.toFixed(2)}\n`;
-        totalPeriod += s.totalAmount;
-    });
+    message += `📉 *VENDAS (FIADO):* R$ ${totalSales.toFixed(2)}\n`;
+    message += `📈 *RECEBIMENTOS:* R$ ${totalPayments.toFixed(2)}\n`;
 
     message += `\n----------------\n`;
-    message += `*TOTAL NO PERÍODO: R$ ${totalPeriod.toFixed(2)}*`;
+    message += `*SALDO DO PERÍODO: R$ ${(totalSales - totalPayments).toFixed(2)}*`;
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');

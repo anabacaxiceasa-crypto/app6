@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { SaleItem, Customer, Sale } from '../types';
+import { SaleItem, Customer, Sale, CustomerPayment } from '../types';
 
 export const generateReceiptPDF = (
     cart: SaleItem[],
@@ -212,14 +212,14 @@ export const generateIndividualCreditReportPDF = (customer: Customer, sales: Sal
     doc.save(`Extrato_${customer.name.replace(/\s+/g, '_')}.pdf`);
 };
 
-export const generateDateRangeCreditReportPDF = (sales: Sale[], startDate: string, endDate: string) => {
+export const generateFinancialReportPDF = (sales: Sale[], payments: CustomerPayment[], startDate: string, endDate: string) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Relatório de Vendas por Período', pageWidth / 2, y, { align: 'center' });
+    doc.text('Relatório Financeiro do Período', pageWidth / 2, y, { align: 'center' });
     y += 10;
 
     doc.setFontSize(10);
@@ -229,40 +229,84 @@ export const generateDateRangeCreditReportPDF = (sales: Sale[], startDate: strin
     doc.text(`Gerado em: ${new Date().toLocaleString()}`, pageWidth / 2, y, { align: 'center' });
     y += 15;
 
-    doc.setFontSize(11);
+    // Sales Section
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.text('VENDAS (FIADO)', 20, y);
+    y += 7;
+
+    doc.setFontSize(10);
     doc.text('Data', 20, y);
     doc.text('Cliente', 50, y);
     doc.text('Valor', pageWidth - 20, y, { align: 'right' });
     y += 5;
     doc.line(20, y, pageWidth - 20, y);
-    y += 10;
+    y += 5;
 
     doc.setFont('helvetica', 'normal');
-    let totalPeriod = 0;
+    let totalSales = 0;
 
     sales.forEach(s => {
-        if (y > 270) {
-            doc.addPage();
-            y = 20;
-        }
-        const date = new Date(s.date).toLocaleDateString();
-        doc.text(date, 20, y);
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.text(new Date(s.date).toLocaleDateString(), 20, y);
         doc.text(s.customerName.substring(0, 30), 50, y);
         doc.text(`R$ ${s.totalAmount.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+        totalSales += s.totalAmount;
+        y += 6;
+    });
 
-        totalPeriod += s.totalAmount;
-        y += 8;
+    y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Vendas: R$ ${totalSales.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+    y += 15;
+
+    // Payments Section
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFontSize(12);
+    doc.text('RECEBIMENTOS', 20, y);
+    y += 7;
+
+    doc.setFontSize(10);
+    doc.text('Data', 20, y);
+    doc.text('Cliente', 50, y);
+    doc.text('Forma', 150, y); // Adjusted X for 'Forma' to avoid overlap
+    doc.text('Valor', pageWidth - 20, y, { align: 'right' });
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 5;
+
+    doc.setFont('helvetica', 'normal');
+    let totalPayments = 0;
+
+    payments.forEach(p => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.text(new Date(p.date).toLocaleDateString(), 20, y);
+        doc.text(p.customerName.substring(0, 30), 50, y);
+        doc.text(p.method, 150, y);
+        doc.text(`R$ ${p.amount.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+        totalPayments += p.amount;
+        y += 6;
     });
 
     y += 5;
     doc.line(20, y, pageWidth - 20, y);
     y += 10;
 
+    // Summary
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('TOTAL NO PERÍODO:', 20, y);
-    doc.text(`R$ ${totalPeriod.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+    doc.text('RESUMO DO PERÍODO', 20, y);
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(`Total Vendido (Fiado): R$ ${totalSales.toFixed(2)}`, 20, y);
+    y += 7;
+    doc.text(`Total Recebido: R$ ${totalPayments.toFixed(2)}`, 20, y);
+    y += 10;
 
-    doc.save(`Relatorio_Vendas_${startDate}_${endDate}.pdf`);
+    const balance = totalSales - totalPayments;
+    doc.setTextColor(balance > 0 ? 200 : 0, balance > 0 ? 0 : 150, 0); // Red if positive (debt increased), Greenish if negative (paid more) logic depends on perspective. 
+    // Let's keep it simple: Balance = Movement. 
+    doc.text(`Saldo do Período: R$ ${balance.toFixed(2)}`, 20, y);
+
+    doc.save(`Relatorio_Financeiro_${startDate}_${endDate}.pdf`);
 };

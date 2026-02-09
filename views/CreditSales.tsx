@@ -24,8 +24,8 @@ import {
 import { DB } from '../db';
 import { Sale, PaymentMethod, Customer, CustomerPayment, User, UserRole } from '../types';
 import { jsPDF } from 'jspdf';
-import { generateGeneralCreditReportPDF, generateIndividualCreditReportPDF, generateDateRangeCreditReportPDF } from '../services/pdfService';
-import { shareGeneralCreditReportWhatsApp, shareIndividualCreditReportWhatsApp, shareDateRangeCreditReportWhatsApp } from '../services/whatsappService';
+import { generateGeneralCreditReportPDF, generateIndividualCreditReportPDF, generateFinancialReportPDF } from '../services/pdfService';
+import { shareGeneralCreditReportWhatsApp, shareIndividualCreditReportWhatsApp, shareFinancialReportWhatsApp } from '../services/whatsappService';
 
 type ViewMode = 'sales' | 'payments';
 
@@ -95,9 +95,10 @@ const CreditSales: React.FC<CreditSalesProps> = ({ currentUser }) => {
     return payments.filter(p => {
       const matchesSearch = p.customerName.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCustomer = filterCustomerId === 'all' || p.customerId === filterCustomerId;
-      return matchesSearch && matchesCustomer;
+      const matchesDate = (!dateRange.start || p.date >= dateRange.start) && (!dateRange.end || p.date <= dateRange.end + 'T23:59:59');
+      return matchesSearch && matchesCustomer && matchesDate;
     });
-  }, [payments, searchQuery, filterCustomerId]);
+  }, [payments, searchQuery, filterCustomerId, dateRange]);
 
   const stats = useMemo(() => {
     const pendingSales = filteredSales.filter(s => s.status === 'PENDING').reduce((acc, s) => acc + (s.totalAmount || 0), 0);
@@ -347,16 +348,16 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
             <>
               <div className="w-[1px] h-full bg-zinc-800 mx-2"></div>
               <button
-                onClick={() => generateDateRangeCreditReportPDF(filteredSales, dateRange.start, dateRange.end)}
+                onClick={() => generateFinancialReportPDF(filteredSales, filteredPayments, dateRange.start, dateRange.end)}
                 className="text-zinc-500 hover:text-white"
-                title="Relatório Período PDF"
+                title="Relatório Financeiro PDF"
               >
                 <FileText size={16} />
               </button>
               <button
-                onClick={() => shareDateRangeCreditReportWhatsApp(filteredSales, dateRange.start, dateRange.end)}
+                onClick={() => shareFinancialReportWhatsApp(filteredSales, filteredPayments, dateRange.start, dateRange.end)}
                 className="text-[#25D366] hover:text-[#25D366]/80"
-                title="Relatório Período WhatsApp"
+                title="Relatório Financeiro WhatsApp"
               >
                 <Share2 size={16} />
               </button>
