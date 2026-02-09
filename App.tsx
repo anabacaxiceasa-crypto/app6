@@ -195,7 +195,8 @@ const App: React.FC = () => {
         }
       } else {
         await supabase.auth.signOut();
-        setError('Conta não vinculada ao banco de dados corporativo (Criação automática falhou).');
+        await supabase.auth.signOut();
+        setError('Conta não vinculada. Por favor, faça login como Admin e clique em "Reparar Banco" nas Configurações.');
       }
     }
     setIsLoading(false);
