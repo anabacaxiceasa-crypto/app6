@@ -160,7 +160,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     const isSeller = userProfile?.role === UserRole.SELLER;
-    const adminOnlyTabs = ['dashboard', 'analytics', 'cashier', 'expenses', 'products', 'damaged', 'customers', 'payments', 'users', 'settings', 'crates'];
+    const adminOnlyTabs = ['dashboard', 'analytics', 'cashier', 'expenses', 'products', 'damaged', 'customers', 'payments', 'users', 'settings', 'crates', 'fiado'];
 
     // Hard check: Vendedores nunca acessam abas de admin, mesmo via URL/Estado
     if (isSeller && adminOnlyTabs.includes(activeTab)) {
@@ -258,8 +258,8 @@ const App: React.FC = () => {
                   type="submit"
                   disabled={isLoading}
                   className={`w-full py-7 font-black italic text-2xl rounded-3xl transition-all flex items-center justify-center gap-3 uppercase tracking-tighter ${authRole === 'admin'
-                      ? 'bg-nike text-black shadow-lg shadow-nike/20'
-                      : 'bg-white text-black hover:bg-zinc-200'
+                    ? 'bg-nike text-black shadow-lg shadow-nike/20'
+                    : 'bg-white text-black hover:bg-zinc-200'
                     } hover:scale-[1.03] active:scale-[0.97]`}
                 >
                   {isLoading ? <Loader2 className="animate-spin" size={28} /> : (
