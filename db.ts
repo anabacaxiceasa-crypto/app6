@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS public.${TABLES.DAMAGED} (
     reason text
 );
 
+-- RELOAD SCHEMA CACHE (Essential for PostgREST to see new tables)
+NOTIFY pgrst, 'reload config';
+
 -- 2. REMOVER RESTRIÇÕES DE COLUNA EM VENDAS
 ALTER TABLE IF EXISTS public.${TABLES.SALES} 
 ALTER COLUMN customer_id DROP NOT NULL;
