@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { SaleItem, Customer } from '../types';
+import { SaleItem, Customer, Sale } from '../types';
 
 export const generateReceiptPDF = (
     cart: SaleItem[],
@@ -104,4 +104,109 @@ export const generateReceiptPDF = (
 
     // Save
     doc.save(`cupom_${new Date().getTime()}.pdf`);
+};
+
+export const generateGeneralCreditReportPDF = (debtors: { id: string; name: string; total: number }[]) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório Geral de Fiado', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, pageWidth / 2, y, { align: 'center' });
+    y += 15;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente', 20, y);
+    doc.text('Total Devedor', pageWidth - 20, y, { align: 'right' });
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    let grandTotal = 0;
+
+    debtors.forEach(d => {
+        if (y > 270) {
+            doc.addPage();
+            y = 20;
+        }
+        doc.text(d.name.substring(0, 40), 20, y);
+        doc.text(`R$ ${d.total.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+        y += 8;
+        grandTotal += d.total;
+    });
+
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL GERAL:', 20, y);
+    doc.text(`R$ ${grandTotal.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+
+    doc.save('Relatorio_Geral_Fiado.pdf');
+};
+
+export const generateIndividualCreditReportPDF = (customer: Customer, sales: Sale[]) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Extrato de Cliente - Fiado', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.text(`Cliente: ${customer.name}`, 20, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 20, y);
+    y += 15;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Data', 20, y);
+    doc.text('Items', 60, y);
+    doc.text('Valor', pageWidth - 20, y, { align: 'right' });
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'normal');
+    let totalDebt = 0;
+
+    sales.forEach(s => {
+        const date = new Date(s.date).toLocaleDateString();
+        const itemsSummary = s.items.map(i => `${i.quantity}x ${i.productName}`).join(', ').substring(0, 50) + (s.items.length > 3 ? '...' : '');
+
+        doc.text(date, 20, y);
+        doc.text(itemsSummary, 60, y);
+        doc.text(`R$ ${s.totalAmount.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+
+        totalDebt += s.totalAmount;
+        y += 8;
+    });
+
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL DEVEDOR:', 20, y);
+    doc.text(`R$ ${totalDebt.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+
+    doc.save(`Extrato_${customer.name.replace(/\s+/g, '_')}.pdf`);
 };

@@ -1,4 +1,4 @@
-import { SaleItem, Customer } from '../types';
+import { SaleItem, Customer, Sale } from '../types';
 
 export const shareSaleOnWhatsApp = (
     cart: SaleItem[],
@@ -45,4 +45,51 @@ export const shareSaleOnWhatsApp = (
     const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
 
     window.open(whatsappUrl, '_blank');
+};
+
+export const shareGeneralCreditReportWhatsApp = (debtors: { id: string; name: string; total: number }[]) => {
+    let message = `*A.M ABACAXI* 🍍\n`;
+    message += `_Relatório Geral de Fiado_\n`;
+    message += `Data: ${new Date().toLocaleDateString()}\n\n`;
+
+    let grandTotal = 0;
+
+    debtors.forEach(d => {
+        message += `👤 ${d.name}: R$ ${d.total.toFixed(2)}\n`;
+        grandTotal += d.total;
+    });
+
+    message += `\n----------------\n`;
+    message += `*TOTAL GERAL: R$ ${grandTotal.toFixed(2)}*`;
+
+    const encodedMessage = encodeURIComponent(message);
+    // Using open implementation without specific number to let user choose contact
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+};
+
+export const shareIndividualCreditReportWhatsApp = (customer: Customer, sales: Sale[]) => {
+    if (!customer.phone) {
+        alert('Cliente não possui telefone cadastrado.');
+        return;
+    }
+
+    let phone = customer.phone.replace(/\D/g, '');
+    if (phone.length <= 11) phone = `55${phone}`;
+
+    let totalDebt = 0;
+    let message = `*A.M ABACAXI* 🍍\n`;
+    message += `_Extrato de Conta - ${customer.name}_\n\n`;
+
+    sales.forEach(s => {
+        const date = new Date(s.date).toLocaleDateString();
+        message += `📅 ${date} - R$ ${s.totalAmount.toFixed(2)}\n`;
+        totalDebt += s.totalAmount;
+    });
+
+    message += `\n----------------\n`;
+    message += `*TOTAL DEVEDOR: R$ ${totalDebt.toFixed(2)}*\n\n`;
+    message += `_Favor entrar em contato para regularizar._`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
 };
