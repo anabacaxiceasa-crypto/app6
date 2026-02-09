@@ -24,6 +24,8 @@ import {
 import { DB } from '../db';
 import { Sale, PaymentMethod, Customer, CustomerPayment, User, UserRole } from '../types';
 import { jsPDF } from 'jspdf';
+import { generateGeneralCreditReportPDF, generateIndividualCreditReportPDF } from '../services/pdfService';
+import { shareGeneralCreditReportWhatsApp, shareIndividualCreditReportWhatsApp } from '../services/whatsappService';
 
 type ViewMode = 'sales' | 'payments';
 
@@ -281,11 +283,41 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
           <div className="absolute top-0 right-0 p-16 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
           <p className="text-[10px] font-black uppercase opacity-60 tracking-widest mb-1 italic">Saldo Devedor Atual</p>
           <h3 className="text-3xl font-black italic">R$ {stats.netPending.toFixed(2)}</h3>
-          {currentUser.role === UserRole.ADMIN && (
-            <button onClick={openPaymentModal} className="absolute bottom-4 right-4 bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:scale-105 transition-transform flex items-center gap-2">
-              <DollarSign size={14} /> Receber Pagamento
+          <div className="absolute bottom-4 right-4 flex gap-2">
+            <button
+              onClick={() => {
+                const debtors = uniqueCustomers.map(c => ({
+                  id: c.id,
+                  name: c.name,
+                  total: sales.filter(s => s.customerId === c.id && s.status === 'PENDING').reduce((acc, s) => acc + s.totalAmount, 0)
+                })).filter(d => d.total > 0);
+                generateGeneralCreditReportPDF(debtors);
+              }}
+              className="bg-black text-white p-2 rounded-xl hover:scale-105 transition-transform"
+              title="Relatório Geral PDF"
+            >
+              <FileText size={16} />
             </button>
-          )}
+            <button
+              onClick={() => {
+                const debtors = uniqueCustomers.map(c => ({
+                  id: c.id,
+                  name: c.name,
+                  total: sales.filter(s => s.customerId === c.id && s.status === 'PENDING').reduce((acc, s) => acc + s.totalAmount, 0)
+                })).filter(d => d.total > 0);
+                shareGeneralCreditReportWhatsApp(debtors);
+              }}
+              className="bg-[#25D366] text-white p-2 rounded-xl hover:scale-105 transition-transform"
+              title="Relatório Geral WhatsApp"
+            >
+              <Share2 size={16} />
+            </button>
+            {currentUser.role === UserRole.ADMIN && (
+              <button onClick={openPaymentModal} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:scale-105 transition-transform flex items-center gap-2">
+                <DollarSign size={14} /> Receber
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -299,10 +331,38 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
           <input type="text" placeholder="Buscar por cliente..." className="w-full bg-[#111] border border-zinc-800 rounded-[30px] py-6 pl-16 pr-6 text-white font-bold outline-none" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
-        <select className="bg-[#111] border border-zinc-800 rounded-2xl py-6 px-6 text-xs font-black uppercase text-white outline-none" value={filterCustomerId} onChange={(e) => setFilterCustomerId(e.target.value)}>
-          <option value="all">Todos Clientes</option>
-          {uniqueCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <div className="flex gap-2">
+          <select className="bg-[#111] border border-zinc-800 rounded-2xl py-6 px-6 text-xs font-black uppercase text-white outline-none" value={filterCustomerId} onChange={(e) => setFilterCustomerId(e.target.value)}>
+            <option value="all">Todos Clientes</option>
+            {uniqueCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          {filterCustomerId !== 'all' && (
+            <>
+              <button
+                onClick={() => {
+                  const customer = customers.find(c => c.id === filterCustomerId);
+                  const customerSales = sales.filter(s => s.customerId === filterCustomerId && s.status === 'PENDING');
+                  if (customer) generateIndividualCreditReportPDF(customer, customerSales);
+                }}
+                className="bg-[#111] border border-zinc-800 rounded-2xl p-4 text-zinc-500 hover:text-white hover:border-nike transition-all"
+                title="Extrato Cliente PDF"
+              >
+                <FileText size={20} />
+              </button>
+              <button
+                onClick={() => {
+                  const customer = customers.find(c => c.id === filterCustomerId);
+                  const customerSales = sales.filter(s => s.customerId === filterCustomerId && s.status === 'PENDING');
+                  if (customer) shareIndividualCreditReportWhatsApp(customer, customerSales);
+                }}
+                className="bg-[#111] border border-zinc-800 rounded-2xl p-4 text-[#25D366] hover:border-[#25D366] transition-all"
+                title="Extrato Cliente WhatsApp"
+              >
+                <Share2 size={20} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
