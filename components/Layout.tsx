@@ -39,16 +39,16 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, activeTab, setActiveTab
 
   // Menu filtrado conforme o cargo (Role)
   const menuItems = [
-    { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Relatórios', roles: [UserRole.ADMIN] },
-    { id: 'analytics', icon: <TrendingUp size={20} />, label: 'Business Intelligence', roles: [UserRole.ADMIN] },
-    { id: 'cashier', icon: <Wallet size={20} />, label: 'Caixa Principal', roles: [UserRole.ADMIN] },
-    { id: 'expenses', icon: <Receipt size={20} />, label: 'Despesas', roles: [UserRole.ADMIN] },
-    { id: 'pos', icon: <ShoppingCart size={20} />, label: 'Vendas (PDV)', roles: [UserRole.ADMIN, UserRole.SELLER] },
-    { id: 'fiado', icon: <CreditCard size={20} />, label: 'Fiado (Crédito)', roles: [UserRole.ADMIN] },
-    { id: 'products', icon: <Package size={20} />, label: 'Estoque', roles: [UserRole.ADMIN] },
-    { id: 'damaged', icon: <AlertTriangle size={20} />, label: 'Avarias', roles: [UserRole.ADMIN] },
-    { id: 'customers', icon: <Users size={20} />, label: 'Clientes', roles: [UserRole.ADMIN] },
-    { id: 'payments', icon: <SettingsIcon size={20} />, label: 'Pagamentos', roles: [UserRole.ADMIN] },
+    { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Relatórios', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'analytics', icon: <TrendingUp size={20} />, label: 'Business Intelligence', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'cashier', icon: <Wallet size={20} />, label: 'Caixa Principal', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'expenses', icon: <Receipt size={20} />, label: 'Despesas', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'pos', icon: <ShoppingCart size={20} />, label: 'Vendas (PDV)', roles: [UserRole.ADMIN, UserRole.SELLER, UserRole.FINANCIAL] },
+    { id: 'fiado', icon: <CreditCard size={20} />, label: 'Fiado (Crédito)', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'products', icon: <Package size={20} />, label: 'Estoque', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'damaged', icon: <AlertTriangle size={20} />, label: 'Avarias', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'customers', icon: <Users size={20} />, label: 'Clientes', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
+    { id: 'payments', icon: <SettingsIcon size={20} />, label: 'Pagamentos', roles: [UserRole.ADMIN, UserRole.FINANCIAL] },
     { id: 'users', icon: <ShieldCheck size={20} />, label: 'Equipe', roles: [UserRole.ADMIN] },
     { id: 'settings', icon: <Cog size={20} />, label: 'Ajustes Master', roles: [UserRole.ADMIN] },
   ];
@@ -97,8 +97,11 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, activeTab, setActiveTab
                 <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-500 border border-zinc-800"><UserIcon size={18} /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black italic text-white truncate uppercase">{user.name}</p>
-                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 w-fit mt-1 ${user.role === UserRole.ADMIN ? 'bg-nike text-black' : 'bg-zinc-800 text-zinc-500'}`}>
-                    {user.role === UserRole.ADMIN ? 'MASTER ADMIN' : 'VENDEDOR'}
+                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 w-fit mt-1 
+                    ${user.role === UserRole.ADMIN ? 'bg-nike text-black' :
+                      user.role === UserRole.FINANCIAL ? 'bg-blue-500 text-white' : 'bg-zinc-800 text-zinc-500'}`}>
+                    {user.role === UserRole.ADMIN ? 'MASTER ADMIN' :
+                      user.role === UserRole.FINANCIAL ? 'FINANCEIRO' : 'VENDEDOR'}
                   </span>
                 </div>
               </div>

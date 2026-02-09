@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Mail, ShieldCheck, ShieldAlert, Trash2, Loader2, Search, UserPlus, X, Lock, Key, AlertTriangle, Copy, Check } from 'lucide-react';
+import { Users, Mail, ShieldCheck, ShieldAlert, Trash2, Loader2, Search, UserPlus, X, Lock, Key, AlertTriangle, Copy, Check, Wallet } from 'lucide-react';
 import { DB, supabase } from '../db';
 import { User, UserRole } from '../types';
 
@@ -156,9 +156,13 @@ const UserManagement: React.FC = () => {
                   <Mail size={12} /> {user.email}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full flex items-center gap-1 ${user.role === UserRole.ADMIN ? 'bg-nike/10 text-nike' : 'bg-zinc-800 text-zinc-500'}`}>
-                    {user.role === UserRole.ADMIN ? <ShieldCheck size={10} /> : <ShieldAlert size={10} />}
-                    {user.role === UserRole.ADMIN ? 'ADMIN MASTER' : 'VENDEDOR'}
+                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full flex items-center gap-1 
+                    ${user.role === UserRole.ADMIN ? 'bg-nike/10 text-nike' :
+                      user.role === UserRole.FINANCIAL ? 'bg-blue-500/10 text-blue-500' : 'bg-zinc-800 text-zinc-500'}`}>
+                    {user.role === UserRole.ADMIN ? <ShieldCheck size={10} /> :
+                      user.role === UserRole.FINANCIAL ? <Wallet size={10} /> : <ShieldAlert size={10} />}
+                    {user.role === UserRole.ADMIN ? 'ADMIN MASTER' :
+                      user.role === UserRole.FINANCIAL ? 'FINANCEIRO' : 'VENDEDOR'}
                   </span>
                 </div>
               </div>
@@ -235,6 +239,7 @@ const UserManagement: React.FC = () => {
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
                   >
                     <option value={UserRole.SELLER}>VENDEDOR (Operacional)</option>
+                    <option value={UserRole.FINANCIAL}>FINANCEIRO (Gerencial)</option>
                     <option value={UserRole.ADMIN}>ADMINISTRADOR (Controle Total)</option>
                   </select>
                 </div>
