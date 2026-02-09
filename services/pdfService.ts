@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { SaleItem, Customer, Sale, CustomerPayment } from '../types';
+import { SaleItem, Customer, Sale, CustomerPayment, Product } from '../types';
 
 export const generateReceiptPDF = (
     cart: SaleItem[],
@@ -309,4 +309,141 @@ export const generateFinancialReportPDF = (sales: Sale[], payments: CustomerPaym
     doc.text(`Saldo do Período: R$ ${balance.toFixed(2)}`, 20, y);
 
     doc.save(`Relatorio_Financeiro_${startDate}_${endDate}.pdf`);
+};
+
+export const generateCashReportPDF = (sales: Sale[], startDate: string, endDate: string) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório de Vendas (Caixa)', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Período: ${new Date(startDate).toLocaleDateString()} até ${new Date(endDate).toLocaleDateString()}`, pageWidth / 2, y, { align: 'center' });
+    y += 15;
+
+    // Filter non-credit sales
+    const cashSales = sales.filter(s => s.paymentMethod !== 'FIADO' && s.status !== 'CANCELLED');
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Data', 20, y);
+    doc.text('Cliente', 50, y);
+    doc.text('Forma', 130, y);
+    doc.text('Valor', pageWidth - 20, y, { align: 'right' });
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'normal');
+    let totalCash = 0;
+    const totalsByMethod: Record<string, number> = {};
+
+    cashSales.forEach(s => {
+        if (y > 270) { doc.addPage(); y = 20; }
+
+        doc.text(new Date(s.date).toLocaleDateString(), 20, y);
+        doc.text(s.customerName.substring(0, 25), 50, y);
+        doc.text(s.paymentMethod, 130, y);
+        doc.text(`R$ ${s.totalAmount.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+
+        totalCash += s.totalAmount;
+        totalsByMethod[s.paymentMethod] = (totalsByMethod[s.paymentMethod] || 0) + s.totalAmount;
+        y += 8;
+    });
+
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RESUMO POR FORMA DE PAGAMENTO:', 20, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    Object.entries(totalsByMethod).forEach(([method, total]) => {
+        doc.text(`${method}: R$ ${total.toFixed(2)}`, 20, y);
+        y += 6;
+    });
+
+    y += 5;
+    doc.setFontSize(14);
+    doc.text(`TOTAL GERAL: R$ ${totalCash.toFixed(2)}`, 20, y);
+
+    doc.save(`Relatorio_Caixa_${startDate}_${endDate}.pdf`);
+};
+
+
+
+export const generateProductOutputReportPDF = (sales: Sale[], products: Product[], startDate: string, endDate: string) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório de Saída de Produtos', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Período: ${new Date(startDate).toLocaleDateString()} até ${new Date(endDate).toLocaleDateString()}`, pageWidth / 2, y, { align: 'center' });
+    y += 15;
+
+    // Aggregate Product Sales
+    const productStats: Record<string, { name: string, qtySold: number, currentStock: number }> = {};
+
+    sales.forEach(s => {
+        if (s.status === 'CANCELLED') return;
+        s.items.forEach(item => {
+            if (!productStats[item.productId]) {
+                const prod = products.find(p => p.id === item.productId);
+                productStats[item.productId] = {
+                    name: item.productName,
+                    qtySold: 0,
+                    currentStock: prod ? prod.stock : 0
+                };
+            }
+            productStats[item.productId].qtySold += item.quantity;
+        });
+    });
+
+    const sortedProducts = Object.values(productStats).sort((a, b) => b.qtySold - a.qtySold);
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Produto', 20, y);
+    doc.text('Qtd Vendida', 120, y, { align: 'right' });
+    doc.text('Estoque Atual', 160, y, { align: 'right' });
+    doc.text('Status', pageWidth - 20, y, { align: 'right' });
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'normal');
+
+    sortedProducts.forEach(p => {
+        if (y > 270) { doc.addPage(); y = 20; }
+
+        doc.text(p.name.substring(0, 40), 20, y);
+        doc.text(p.qtySold.toString(), 120, y, { align: 'right' });
+        doc.text(p.currentStock.toString(), 160, y, { align: 'right' });
+
+        let status = 'OK';
+        if (p.currentStock <= 0) status = 'ESGOTADO';
+        else if (p.currentStock < 10) status = 'BAIXO';
+
+        doc.setTextColor(status === 'OK' ? 0 : 200, status === 'OK' ? 100 : 0, 0);
+        doc.text(status, pageWidth - 20, y, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+
+        y += 8;
+    });
+
+    doc.save(`Relatorio_Produtos_${startDate}_${endDate}.pdf`);
 };

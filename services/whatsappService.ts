@@ -1,4 +1,4 @@
-import { SaleItem, Customer, Sale, CustomerPayment } from '../types';
+import { SaleItem, Customer, Sale, CustomerPayment, Product } from '../types';
 
 export const shareSaleOnWhatsApp = (
     cart: SaleItem[],
@@ -107,6 +107,66 @@ export const shareFinancialReportWhatsApp = (sales: Sale[], payments: CustomerPa
 
     message += `\n----------------\n`;
     message += `*SALDO DO PERÍODO: R$ ${(totalSales - totalPayments).toFixed(2)}*`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+};
+
+export const shareCashReportWhatsApp = (sales: Sale[], startDate: string, endDate: string) => {
+    let message = `*A.M ABACAXI* 🍍\n`;
+    message += `_Relatório de Caixa (Vendas)_\n`;
+    message += `📅 ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n`;
+
+    const cashSales = sales.filter(s => s.paymentMethod !== 'FIADO' && s.status !== 'CANCELLED');
+    const totalsByMethod: Record<string, number> = {};
+    let totalCash = 0;
+
+    cashSales.forEach(s => {
+        totalCash += s.totalAmount;
+        totalsByMethod[s.paymentMethod] = (totalsByMethod[s.paymentMethod] || 0) + s.totalAmount;
+    });
+
+    Object.entries(totalsByMethod).forEach(([method, total]) => {
+        message += `💰 *${method}:* R$ ${total.toFixed(2)}\n`;
+    });
+
+    message += `\n----------------\n`;
+    message += `*TOTAL GERAL: R$ ${totalCash.toFixed(2)}*`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+};
+
+export const shareProductOutputReportWhatsApp = (sales: Sale[], products: Product[], startDate: string, endDate: string) => {
+    let message = `*A.M ABACAXI* 🍍\n`;
+    message += `_Saída de Produtos (Top 10)_\n`;
+    message += `📅 ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n`;
+
+    const productStats: Record<string, { name: string, qtySold: number, currentStock: number }> = {};
+
+    sales.forEach(s => {
+        if (s.status === 'CANCELLED') return;
+        s.items.forEach(item => {
+            if (!productStats[item.productId]) {
+                const prod = products.find(p => p.id === item.productId);
+                productStats[item.productId] = {
+                    name: item.productName,
+                    qtySold: 0,
+                    currentStock: prod ? prod.stock : 0
+                };
+            }
+            productStats[item.productId].qtySold += item.quantity;
+        });
+    });
+
+    const sortedProducts = Object.values(productStats)
+        .sort((a, b) => b.qtySold - a.qtySold)
+        .slice(0, 10);
+
+    sortedProducts.forEach((p, index) => {
+        message += `${index + 1}. *${p.name}*\n`;
+        message += `   Semana: ${p.qtySold} un | Estoque: ${p.currentStock}\n`;
+    });
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
