@@ -33,7 +33,7 @@ export const DB = {
     return `
 -- SCRIPT DE REPARAÇÃO TOTAL - EXECUTE NO SQL EDITOR DO SUPABASE --
 
--- 1. CRIAR TABELA DE PAGAMENTOS DE CLIENTES SE NÃO EXISTIR
+-- 1. CRIAR TABELAS SE NÃO EXISTIREM
 CREATE TABLE IF NOT EXISTS public.${TABLES.CUSTOMER_PAYMENTS} (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     date timestamptz DEFAULT now(),
@@ -42,6 +42,23 @@ CREATE TABLE IF NOT EXISTS public.${TABLES.CUSTOMER_PAYMENTS} (
     amount numeric NOT NULL,
     method text,
     notes text
+);
+
+CREATE TABLE IF NOT EXISTS public.${TABLES.EXPENSES} (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    date timestamptz DEFAULT now(),
+    description text NOT NULL,
+    amount numeric NOT NULL,
+    category text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.${TABLES.DAMAGED} (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    date timestamptz DEFAULT now(),
+    product_id uuid REFERENCES public.${TABLES.PRODUCTS}(id),
+    product_name text,
+    quantity int NOT NULL,
+    reason text
 );
 
 -- 2. REMOVER RESTRIÇÕES DE COLUNA EM VENDAS
@@ -58,8 +75,17 @@ ALTER TABLE IF EXISTS public.${TABLES.SALES} ADD COLUMN IF NOT EXISTS crates_out
 
 -- 3. HABILITAR RLS E POLÍTICAS
 ALTER TABLE public.${TABLES.CUSTOMER_PAYMENTS} ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.${TABLES.EXPENSES} ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.${TABLES.DAMAGED} ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Acesso Irrestrito Autenticado Payments" ON public.${TABLES.CUSTOMER_PAYMENTS};
 CREATE POLICY "Acesso Irrestrito Autenticado Payments" ON public.${TABLES.CUSTOMER_PAYMENTS} FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Acesso Irrestrito Autenticado Expenses" ON public.${TABLES.EXPENSES};
+CREATE POLICY "Acesso Irrestrito Autenticado Expenses" ON public.${TABLES.EXPENSES} FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Acesso Irrestrito Autenticado Damaged" ON public.${TABLES.DAMAGED};
+CREATE POLICY "Acesso Irrestrito Autenticado Damaged" ON public.${TABLES.DAMAGED} FOR ALL TO authenticated USING (true);
 
 -- 4. ATUALIZAR CAIXA DE ESQUEMA (Resolve erro de Cache do esquema)
 NOTIFY pgrst, 'reload schema';
@@ -233,13 +259,14 @@ $$;
       customerName: sale.customerName || 'Cliente Balcão',
       globalDiscount: sale.globalDiscount || 0,
       globalSurcharge: sale.globalSurcharge || 0,
-      cratesIn: sale.cratesIn || 0,
-      cratesOut: sale.cratesOut || 0
+      cratesIn: safeNumber(sale.cratesIn),
+      cratesOut: safeNumber(sale.cratesOut)
     };
 
     const { error: rpcError } = await supabase.rpc('process_sale', { sale_data: normalizedSale });
 
     if (rpcError) {
+      console.warn("RPC failed, falling back to client-side transaction:", rpcError);
       const { error: insertError } = await supabase.from(TABLES.SALES).insert([{
         date: normalizedSale.date,
         customer_id: normalizedSale.customerId,
@@ -252,17 +279,30 @@ $$;
         global_surcharge: normalizedSale.globalSurcharge,
         payment_method: normalizedSale.paymentMethod,
         due_date: normalizedSale.dueDate || null,
-        status: normalizedSale.status
+        status: normalizedSale.status,
+        crates_in: normalizedSale.cratesIn,
+        crates_out: normalizedSale.cratesOut
       }]);
 
       if (insertError) throw insertError;
 
+      // ATUALIZAR ESTOQUE
       for (const item of normalizedSale.items) {
         if (item.productId !== 'AVULSO') {
           const { data: prod } = await supabase.from(TABLES.PRODUCTS).select('stock').eq('id', item.productId).single();
           if (prod) {
             await supabase.from(TABLES.PRODUCTS).update({ stock: prod.stock - item.quantity }).eq('id', item.productId);
           }
+        }
+      }
+
+      // ATUALIZAR DEMANDAS DE CAIXAS (CRATES) - FALLBACK
+      if (normalizedSale.customerId && (normalizedSale.cratesIn > 0 || normalizedSale.cratesOut > 0)) {
+        const { data: cust } = await supabase.from(TABLES.CUSTOMERS).select('crates_balance').eq('id', normalizedSale.customerId).single();
+        if (cust) {
+          const currentBalance = safeNumber(cust.crates_balance);
+          const newBalance = currentBalance + normalizedSale.cratesOut - normalizedSale.cratesIn;
+          await supabase.from(TABLES.CUSTOMERS).update({ crates_balance: newBalance }).eq('id', normalizedSale.customerId);
         }
       }
     }
@@ -295,15 +335,35 @@ $$;
   cancelSale: async (id: string) => {
     const { data: sale, error: getError } = await supabase.from(TABLES.SALES).select('*').eq('id', id).single();
     if (getError || !sale) throw getError || new Error('Venda não encontrada');
+
     if (sale.status !== 'CANCELLED') {
       const { error: updateError } = await supabase.from(TABLES.SALES).update({ status: 'CANCELLED' }).eq('id', id);
       if (updateError) throw updateError;
+
+      // RESTAURAR ESTOQUE
       for (const item of (sale.items as SaleItem[])) {
         if (item.productId !== 'AVULSO') {
           const { data: p } = await supabase.from(TABLES.PRODUCTS).select('stock').eq('id', item.productId).single();
           if (p) {
             await supabase.from(TABLES.PRODUCTS).update({ stock: p.stock + item.quantity }).eq('id', item.productId);
           }
+        }
+      }
+
+      // RESTAURAR SALDO DE CAIXAS (Reverter a operação)
+      // Se saiu 5 caixas na venda, agora elas voltam para o estoque (cliente devolve ou cancela a dívida)
+      // Se entrou 5 caixas na venda, agora elas saem do estoque (cliente pega de volta)
+      // Balance = Balance - Out + In
+      const cIn = safeNumber(sale.crates_in);
+      const cOut = safeNumber(sale.crates_out);
+
+      if (sale.customer_id && (cIn > 0 || cOut > 0)) {
+        const { data: cust } = await supabase.from(TABLES.CUSTOMERS).select('crates_balance').eq('id', sale.customer_id).single();
+        if (cust) {
+          const currentBalance = safeNumber(cust.crates_balance);
+          // Revertendo: subtrai o que saiu (remove da dívida) e soma o que entrou (devolve o crédito)
+          const newBalance = currentBalance - cOut + cIn;
+          await supabase.from(TABLES.CUSTOMERS).update({ crates_balance: newBalance }).eq('id', sale.customer_id);
         }
       }
     }
