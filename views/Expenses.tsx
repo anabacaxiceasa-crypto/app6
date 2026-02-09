@@ -18,7 +18,11 @@ import {
 import { DB } from '../db';
 import { Expense, ExpenseCategory } from '../types';
 
-const Expenses: React.FC = () => {
+interface ExpensesProps {
+  onNavigate?: (tab: string) => void;
+}
+
+const Expenses: React.FC<ExpensesProps> = ({ onNavigate }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,7 +66,7 @@ const Expenses: React.FC = () => {
     } catch (err: any) {
       console.error("Erro ao salvar despesa:", err);
       if (err.message && (err.message.includes('Could not find the table') || err.message.includes('relation "public.nikeflow_expenses" does not exist'))) {
-        alert("⚠️ ERRO CRÍTICO: TABELA NÃO ENCONTRADA\n\nO sistema não encontrou a tabela de despesas. Isso é comum em atualizações.\n\nSOLUÇÃO:\n1. Vá na aba 'AJUSTES' (Engrenagem)\n2. Procure 'Reparação de Erros de Banco'\n3. Copie e Rode o Script no Supabase.");
+        setIsErrorModalOpen(true);
       } else {
         alert(`Erro ao salvar: ${err.message}`);
       }
@@ -70,6 +74,8 @@ const Expenses: React.FC = () => {
       setIsSaving(false);
     }
   };
+
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
   const handleDelete = async (id: string) => {
     if (confirm("Deseja excluir esta despesa?")) {

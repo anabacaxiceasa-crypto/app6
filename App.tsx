@@ -220,7 +220,7 @@ const App: React.FC = () => {
       case 'dashboard': return <Dashboard />;
       case 'analytics': return <Analytics />;
       case 'cashier': return <MainCashier />;
-      case 'expenses': return <Expenses />;
+      case 'expenses': return <Expenses onNavigate={setActiveTab} />;
       case 'pos': return <SalesPOS currentUser={userProfile} />;
       case 'products': return <Products />;
       case 'customers': return <Customers />;
