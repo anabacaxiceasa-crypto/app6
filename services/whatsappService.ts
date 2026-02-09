@@ -93,3 +93,22 @@ export const shareIndividualCreditReportWhatsApp = (customer: Customer, sales: S
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');
 };
+
+export const shareDateRangeCreditReportWhatsApp = (sales: Sale[], startDate: string, endDate: string) => {
+    let message = `*A.M ABACAXI* 🍍\n`;
+    message += `_Relatório de Vendas por Período_\n`;
+    message += `📅 ${new Date(startDate).toLocaleDateString()} até ${new Date(endDate).toLocaleDateString()}\n\n`;
+
+    let totalPeriod = 0;
+
+    sales.forEach(s => {
+        message += `🔹 ${new Date(s.date).toLocaleDateString()} - ${s.customerName}: R$ ${s.totalAmount.toFixed(2)}\n`;
+        totalPeriod += s.totalAmount;
+    });
+
+    message += `\n----------------\n`;
+    message += `*TOTAL NO PERÍODO: R$ ${totalPeriod.toFixed(2)}*`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+};

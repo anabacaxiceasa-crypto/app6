@@ -208,5 +208,61 @@ export const generateIndividualCreditReportPDF = (customer: Customer, sales: Sal
     doc.text('TOTAL DEVEDOR:', 20, y);
     doc.text(`R$ ${totalDebt.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
 
+
     doc.save(`Extrato_${customer.name.replace(/\s+/g, '_')}.pdf`);
+};
+
+export const generateDateRangeCreditReportPDF = (sales: Sale[], startDate: string, endDate: string) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório de Vendas por Período', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Período: ${new Date(startDate).toLocaleDateString()} até ${new Date(endDate).toLocaleDateString()}`, pageWidth / 2, y, { align: 'center' });
+    y += 7;
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, pageWidth / 2, y, { align: 'center' });
+    y += 15;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Data', 20, y);
+    doc.text('Cliente', 50, y);
+    doc.text('Valor', pageWidth - 20, y, { align: 'right' });
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'normal');
+    let totalPeriod = 0;
+
+    sales.forEach(s => {
+        if (y > 270) {
+            doc.addPage();
+            y = 20;
+        }
+        const date = new Date(s.date).toLocaleDateString();
+        doc.text(date, 20, y);
+        doc.text(s.customerName.substring(0, 30), 50, y);
+        doc.text(`R$ ${s.totalAmount.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+
+        totalPeriod += s.totalAmount;
+        y += 8;
+    });
+
+    y += 5;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 10;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL NO PERÍODO:', 20, y);
+    doc.text(`R$ ${totalPeriod.toFixed(2)}`, pageWidth - 20, y, { align: 'right' });
+
+    doc.save(`Relatorio_Vendas_${startDate}_${endDate}.pdf`);
 };

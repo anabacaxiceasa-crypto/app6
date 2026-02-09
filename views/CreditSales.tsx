@@ -24,8 +24,8 @@ import {
 import { DB } from '../db';
 import { Sale, PaymentMethod, Customer, CustomerPayment, User, UserRole } from '../types';
 import { jsPDF } from 'jspdf';
-import { generateGeneralCreditReportPDF, generateIndividualCreditReportPDF } from '../services/pdfService';
-import { shareGeneralCreditReportWhatsApp, shareIndividualCreditReportWhatsApp } from '../services/whatsappService';
+import { generateGeneralCreditReportPDF, generateIndividualCreditReportPDF, generateDateRangeCreditReportPDF } from '../services/pdfService';
+import { shareGeneralCreditReportWhatsApp, shareIndividualCreditReportWhatsApp, shareDateRangeCreditReportWhatsApp } from '../services/whatsappService';
 
 type ViewMode = 'sales' | 'payments';
 
@@ -40,6 +40,7 @@ const CreditSales: React.FC<CreditSalesProps> = ({ currentUser }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCustomerId, setFilterCustomerId] = useState<string>('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -85,9 +86,10 @@ const CreditSales: React.FC<CreditSalesProps> = ({ currentUser }) => {
     return sales.filter(s => {
       const matchesSearch = s.customerName.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCustomer = filterCustomerId === 'all' || s.customerId === filterCustomerId;
-      return matchesSearch && matchesCustomer;
+      const matchesDate = (!dateRange.start || s.date >= dateRange.start) && (!dateRange.end || s.date <= dateRange.end + 'T23:59:59');
+      return matchesSearch && matchesCustomer && matchesDate;
     });
-  }, [sales, searchQuery, filterCustomerId]);
+  }, [sales, searchQuery, filterCustomerId, dateRange]);
 
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
@@ -327,6 +329,47 @@ _Para baixar esta nota, favor efetuar o pagamento via PIX ou em nosso box no Cea
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex gap-2 items-center bg-[#111] border border-zinc-800 rounded-2xl p-2 h-[48px] self-end md:self-auto">
+          <input
+            type="date"
+            className="bg-transparent text-white text-[10px] font-bold uppercase outline-none"
+            value={dateRange.start}
+            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+          />
+          <span className="text-zinc-500">-</span>
+          <input
+            type="date"
+            className="bg-transparent text-white text-[10px] font-bold uppercase outline-none"
+            value={dateRange.end}
+            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+          />
+          {dateRange.start && dateRange.end && (
+            <>
+              <div className="w-[1px] h-full bg-zinc-800 mx-2"></div>
+              <button
+                onClick={() => generateDateRangeCreditReportPDF(filteredSales, dateRange.start, dateRange.end)}
+                className="text-zinc-500 hover:text-white"
+                title="Relatório Período PDF"
+              >
+                <FileText size={16} />
+              </button>
+              <button
+                onClick={() => shareDateRangeCreditReportWhatsApp(filteredSales, dateRange.start, dateRange.end)}
+                className="text-[#25D366] hover:text-[#25D366]/80"
+                title="Relatório Período WhatsApp"
+              >
+                <Share2 size={16} />
+              </button>
+              <button
+                onClick={() => setDateRange({ start: '', end: '' })}
+                className="text-red-500 hover:text-red-400 ml-2"
+                title="Limpar Datas"
+              >
+                <X size={16} />
+              </button>
+            </>
+          )}
+        </div>
         <div className="relative flex-1">
           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
           <input type="text" placeholder="Buscar por cliente..." className="w-full bg-[#111] border border-zinc-800 rounded-[30px] py-6 pl-16 pr-6 text-white font-bold outline-none" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
