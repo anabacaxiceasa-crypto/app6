@@ -40,7 +40,7 @@ const UserManagement: React.FC = () => {
       // Nota Sênior: Para criar usuários no Auth sem deslogar o Admin, 
       // o ideal é desativar a confirmação de e-mail no Supabase Dashboard
       // ou usar uma Edge Function. Aqui usamos o signUp padrão.
-      
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newUser.email.trim(),
         password: newUser.password,
@@ -68,11 +68,11 @@ const UserManagement: React.FC = () => {
         await loadUsers();
         setIsModalOpen(false);
         setNewUser({ name: '', email: '', password: '', role: UserRole.SELLER });
-        
-        alert(`SUCESSO!\nO usuário ${profile.name} foi criado.\n\nIMPORTANTE: Verifique se sua sessão de administrador continua ativa. Caso tenha sido deslogado, basta entrar novamente.`);
+
+        alert(`SUCESSO!\nO usuário ${profile.name} foi criado.\n\nATENÇÃO: Como você criou um novo login, sua sessão atual pode ter sido alterada para o novo usuário.\n\nSe você for deslogado, basta entrar novamente com sua conta de ADMIN.`);
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao processar cadastro. Tente novamente.');
+      setError(err.message || 'Erro ao processar cadastro. Tente REPARAR O BANCO nas Configurações.');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,8 +93,8 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredUsers = users.filter(u =>
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -116,7 +116,7 @@ const UserManagement: React.FC = () => {
           </h2>
           <p className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mt-2">Segurança Master & Controle de Acessos</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="bg-nike text-black font-black italic px-8 py-4 rounded-2xl flex items-center gap-2 hover:scale-105 transition-all shadow-xl"
         >
@@ -134,8 +134,8 @@ const UserManagement: React.FC = () => {
 
       <div className="relative">
         <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-zinc-600" size={20} />
-        <input 
-          type="text" 
+        <input
+          type="text"
           placeholder="Filtrar por nome ou e-mail corporativo..."
           className="w-full bg-[#0a0a0a] border border-zinc-900 rounded-[30px] py-6 pl-16 pr-6 focus:border-nike outline-none transition-all font-bold"
           value={searchQuery}
@@ -165,14 +165,14 @@ const UserManagement: React.FC = () => {
             </div>
 
             <div className="flex gap-2 z-10">
-              <button 
+              <button
                 onClick={() => toggleRole(user)}
                 title="Alterar Cargo"
                 className="p-4 bg-zinc-900 rounded-2xl text-zinc-500 hover:text-nike transition-all"
               >
                 <Key size={20} />
               </button>
-              <button 
+              <button
                 onClick={() => deleteUser(user.id)}
                 title="Excluir Usuário"
                 className="p-4 bg-zinc-900 rounded-2xl text-zinc-500 hover:text-red-500 transition-all"
@@ -187,73 +187,73 @@ const UserManagement: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
           <div className="bg-[#111] border border-zinc-800 w-full max-w-lg rounded-[40px] p-10 shadow-2xl relative">
-             <div className="flex justify-between items-center mb-8 relative z-10">
-                <h3 className="text-3xl font-black italic uppercase tracking-tighter">Novo Acesso</h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-zinc-500 hover:text-white">
-                  <X size={24} />
-                </button>
-             </div>
+            <div className="flex justify-between items-center mb-8 relative z-10">
+              <h3 className="text-3xl font-black italic uppercase tracking-tighter">Novo Acesso</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-zinc-500 hover:text-white">
+                <X size={24} />
+              </button>
+            </div>
 
-             <form onSubmit={handleCreateUser} className="space-y-6">
-                <div className="space-y-4">
-                   <div>
-                      <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Nome Completo</label>
-                      <input 
-                        type="text" 
-                        required
-                        className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
-                        value={newUser.name}
-                        onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                      />
-                   </div>
-                   <div>
-                      <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">E-mail Corporativo</label>
-                      <input 
-                        type="email" 
-                        required
-                        className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
-                        value={newUser.email}
-                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                      />
-                   </div>
-                   <div>
-                      <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Senha (Mín. 6 Caracteres)</label>
-                      <input 
-                        type="password" 
-                        required
-                        minLength={6}
-                        className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
-                        value={newUser.password}
-                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                      />
-                   </div>
-                   <div>
-                      <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Cargo de Confiança</label>
-                      <select 
-                        className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none appearance-none"
-                        value={newUser.role}
-                        onChange={(e) => setNewUser({...newUser, role: e.target.value as UserRole})}
-                      >
-                        <option value={UserRole.SELLER}>VENDEDOR (Operacional)</option>
-                        <option value={UserRole.ADMIN}>ADMINISTRADOR (Controle Total)</option>
-                      </select>
-                   </div>
+            <form onSubmit={handleCreateUser} className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Nome Completo</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  />
                 </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">E-mail Corporativo</label>
+                  <input
+                    type="email"
+                    required
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Senha (Mín. 6 Caracteres)</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Cargo de Confiança</label>
+                  <select
+                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none appearance-none"
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
+                  >
+                    <option value={UserRole.SELLER}>VENDEDOR (Operacional)</option>
+                    <option value={UserRole.ADMIN}>ADMINISTRADOR (Controle Total)</option>
+                  </select>
+                </div>
+              </div>
 
-                {error && (
-                  <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-red-500 text-[10px] font-black uppercase">
-                    {error}
-                  </div>
-                )}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-red-500 text-[10px] font-black uppercase">
+                  {error}
+                </div>
+              )}
 
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="w-full py-5 bg-nike text-black font-black italic text-xl rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
-                >
-                  {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : 'CRIAR ACESSO OFICIAL'}
-                </button>
-             </form>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-5 bg-nike text-black font-black italic text-xl rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : 'CRIAR ACESSO OFICIAL'}
+              </button>
+            </form>
           </div>
         </div>
       )}

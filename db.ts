@@ -58,7 +58,22 @@ CREATE TABLE IF NOT EXISTS public.${TABLES.DAMAGED} (
     product_id uuid REFERENCES public.${TABLES.PRODUCTS}(id),
     product_name text,
     quantity int NOT NULL,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    date timestamptz DEFAULT now(),
+    product_id uuid REFERENCES public.${TABLES.PRODUCTS}(id),
+    product_name text,
+    quantity int NOT NULL,
     reason text
+);
+
+CREATE TABLE IF NOT EXISTS public.${TABLES.USERS} (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- Pode ser linkado ao auth.users.id
+    email text UNIQUE NOT NULL,
+    name text,
+    username text,
+    role text DEFAULT 'seller',
+    password_hash text,
+    created_at timestamptz DEFAULT now()
 );
 
 -- RELOAD SCHEMA CACHE (Essential for PostgREST to see new tables)
@@ -89,6 +104,21 @@ CREATE POLICY "Acesso Irrestrito Autenticado Expenses" ON public.${TABLES.EXPENS
 
 DROP POLICY IF EXISTS "Acesso Irrestrito Autenticado Damaged" ON public.${TABLES.DAMAGED};
 CREATE POLICY "Acesso Irrestrito Autenticado Damaged" ON public.${TABLES.DAMAGED} FOR ALL TO authenticated USING (true);
+
+ALTER TABLE public.${TABLES.USERS} ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users Admin and Self Access" ON public.${TABLES.USERS};
+-- Permite que usuários vejam/editem seu próprio perfil OU que admins vejam/editem todos
+CREATE POLICY "Users Admin and Self Access" ON public.${TABLES.USERS} FOR ALL TO authenticated 
+USING (
+    auth.uid() = id OR 
+    EXISTS (SELECT 1 FROM public.${TABLES.USERS} WHERE id = auth.uid() AND role = 'admin')
+);
+
+DROP POLICY IF EXISTS "Enable Insert for Registration" ON public.${TABLES.USERS};
+-- Permite que qualquer usuário autenticado insira seu próprio perfil (necessário para o fluxo de cadastro where trigger isn't used)
+CREATE POLICY "Enable Insert for Registration" ON public.${TABLES.USERS} FOR INSERT TO authenticated 
+WITH CHECK (auth.uid() = id);
 
 -- 4. ATUALIZAR CAIXA DE ESQUEMA (Resolve erro de Cache do esquema)
 NOTIFY pgrst, 'reload schema';
