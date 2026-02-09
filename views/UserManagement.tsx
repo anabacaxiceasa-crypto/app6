@@ -19,6 +19,8 @@ const UserManagement: React.FC = () => {
     password: '',
     role: UserRole.SELLER
   });
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [generatedCredentials, setGeneratedCredentials] = useState({ name: '', email: '', password: '' });
 
   useEffect(() => {
     loadUsers();
@@ -37,13 +39,20 @@ const UserManagement: React.FC = () => {
     setError('');
 
     try {
-      // Nota Sênior: Para criar usuários no Auth sem deslogar o Admin, 
-      // o ideal é desativar a confirmação de e-mail no Supabase Dashboard
-      // ou usar uma Edge Function. Aqui usamos o signUp padrão.
+      let emailToUse = newUser.email.trim();
+      let passwordToUse = newUser.password;
+
+      // Auto-generate for Seller
+      if (newUser.role === UserRole.SELLER) {
+        const cleanName = newUser.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const randomSuffix = Math.floor(Math.random() * 10000);
+        emailToUse = `${cleanName}.${randomSuffix}@vendedor.com`;
+        passwordToUse = '123456'; // Default password for speed
+      }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email.trim(),
-        password: newUser.password,
+        email: emailToUse,
+        password: passwordToUse,
         options: {
           data: {
             full_name: newUser.name.toUpperCase(),
@@ -58,18 +67,24 @@ const UserManagement: React.FC = () => {
         const profile: User = {
           id: authData.user.id,
           name: newUser.name.toUpperCase(),
-          username: newUser.email.split('@')[0],
-          email: newUser.email.trim(),
+          username: emailToUse.split('@')[0],
+          email: emailToUse,
           role: newUser.role,
           password_hash: 'managed-by-supabase-auth'
         };
 
         await DB.saveUser(profile);
         await loadUsers();
+
         setIsModalOpen(false);
         setNewUser({ name: '', email: '', password: '', role: UserRole.SELLER });
 
-        alert(`SUCESSO!\nO usuário ${profile.name} foi criado.\n\nATENÇÃO: Como você criou um novo login, sua sessão atual pode ter sido alterada para o novo usuário.\n\nSe você for deslogado, basta entrar novamente com sua conta de ADMIN.`);
+        if (newUser.role === UserRole.SELLER) {
+          setGeneratedCredentials({ name: profile.name, email: emailToUse, password: passwordToUse });
+          setShowCredentialsModal(true);
+        } else {
+          alert(`SUCESSO!\nO usuário ${profile.name} foi criado.\n\nATENÇÃO: Como você criou um novo login, sua sessão atual pode ter sido alterada para o novo usuário.\n\nSe você for deslogado, basta entrar novamente com sua conta de ADMIN.`);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Erro ao processar cadastro. Tente REPARAR O BANCO nas Configurações.');
@@ -210,27 +225,39 @@ const UserManagement: React.FC = () => {
                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">E-mail Corporativo</label>
-                  <input
-                    type="email"
-                    required
-                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Senha (Mín. 6 Caracteres)</label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  />
-                </div>
+                {newUser.role !== UserRole.SELLER && (
+                  <>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">E-mail Corporativo</label>
+                      <input
+                        type="email"
+                        required
+                        className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Senha (Mín. 6 Caracteres)</label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-sm font-bold focus:border-nike outline-none"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {newUser.role === UserRole.SELLER && (
+                  <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
+                    <p className="text-zinc-400 text-xs text-center italic">
+                      Login e Senha serão gerados automaticamente para agilizar o processo.
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest pl-2 italic">Cargo de Confiança</label>
                   <select
@@ -263,6 +290,58 @@ const UserManagement: React.FC = () => {
         </div>
       )}
     </div>
+
+      {/* MODAL DE CREDENCIAIS GERADAS */ }
+  {
+    showCredentialsModal && (
+      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+        <div className="bg-[#111] border border-nike w-full max-w-md rounded-[40px] p-8 shadow-[0_0_50px_rgba(226,255,0,0.1)] relative">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 bg-nike text-black rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check size={40} className="animate-in zoom-in duration-500" />
+            </div>
+
+            <h3 className="text-2xl font-black italic uppercase text-white">Acesso Criado!</h3>
+            <p className="text-zinc-400 text-sm">Tire um print ou anote os dados abaixo para enviar ao vendedor.</p>
+
+            <div className="bg-zinc-900 rounded-3xl p-6 space-y-4 mt-6 border border-zinc-800">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500">Vendedor</label>
+                <p className="text-white font-black text-lg italic uppercase">{generatedCredentials.name}</p>
+              </div>
+              <div className="h-px bg-zinc-800"></div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500">E-mail de Login</label>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-nike font-mono text-lg truncate">{generatedCredentials.email}</p>
+                  <button onClick={() => navigator.clipboard.writeText(generatedCredentials.email)} className="text-zinc-500 hover:text-white">
+                    <Copy size={16} />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-500">Senha Padrão</label>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-white font-mono text-xl tracking-widest">{generatedCredentials.password}</p>
+                  <button onClick={() => navigator.clipboard.writeText(generatedCredentials.password)} className="text-zinc-500 hover:text-white">
+                    <Copy size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowCredentialsModal(false)}
+              className="w-full py-4 bg-white text-black font-black italic rounded-2xl hover:bg-zinc-200 transition-all uppercase mt-6"
+            >
+              Concluir
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+    </div >
   );
 };
 
