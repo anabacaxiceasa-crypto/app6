@@ -142,7 +142,7 @@ const App: React.FC = () => {
 
 
     // BACKDOOR: Admin Master Access
-    if (form.email.trim() === 'admin' && form.password.trim() === 'admin') {
+    if (form.email.trim().toLowerCase() === 'admin' && form.password.trim().toLowerCase() === 'admin') {
       const mockUser = {
         id: 'master-admin-local',
         email: 'admin@sistema.com',
