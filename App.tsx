@@ -89,6 +89,12 @@ const App: React.FC = () => {
         .single();
 
       if (profile && !error) {
+        // Auto-Admin: Hardcode 'ademymoreira@hotmail.com' as ADMIN if not already
+        if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
+          await supabase.from('nikeflow_users').update({ role: UserRole.ADMIN }).eq('id', profile.id);
+          profile.role = UserRole.ADMIN;
+        }
+
         setUserProfile(profile);
         // Garantia de segurança: Se for vendedor, redireciona pro PDV
         if (profile.role === UserRole.SELLER) {
@@ -98,12 +104,13 @@ const App: React.FC = () => {
         // Auto-healing: Create profile if missing
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          const isAdmin = user.email === 'ademymoreira@hotmail.com';
           const newProfile = {
             id: user.id,
             email: user.email,
-            name: 'Novo Usuário',
+            name: isAdmin ? 'Administrador' : 'Novo Usuário',
             username: user.email?.split('@')[0] || 'user',
-            role: UserRole.SELLER // Default role
+            role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
           };
 
           const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
@@ -141,9 +148,31 @@ const App: React.FC = () => {
     }
 
     if (data.user) {
-      const { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
+      let { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
+
+      // AUTO-HEALING: Se não existir perfil, criar agora antes de validar
+      if (!profile) {
+        const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
+        const newProfile = {
+          id: data.user.id,
+          email: data.user.email,
+          name: isAdmin ? 'Administrador' : 'Novo Usuário',
+          username: data.user.email?.split('@')[0] || 'user',
+          role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
+        };
+        const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
+        if (!insertError) {
+          profile = newProfile;
+        }
+      }
 
       if (profile) {
+        // Auto-Admin Grant (Duplicate check to be safe)
+        if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
+          await supabase.from('nikeflow_users').update({ role: UserRole.ADMIN }).eq('id', profile.id);
+          profile.role = UserRole.ADMIN;
+        }
+
         // Check de Role forçado
         if (authRole === 'admin' && profile.role !== UserRole.ADMIN) {
           await supabase.auth.signOut();
@@ -166,7 +195,7 @@ const App: React.FC = () => {
         }
       } else {
         await supabase.auth.signOut();
-        setError('Conta não vinculada ao banco de dados corporativo.');
+        setError('Conta não vinculada ao banco de dados corporativo (Criação automática falhou).');
       }
     }
     setIsLoading(false);
