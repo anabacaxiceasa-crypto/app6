@@ -95,7 +95,27 @@ const App: React.FC = () => {
           setActiveTab('pos');
         }
       } else {
-        // Se não houver perfil vinculado, deslogar por segurança
+        // Auto-healing: Create profile if missing
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const newProfile = {
+            id: user.id,
+            email: user.email,
+            name: 'Novo Usuário',
+            username: user.email?.split('@')[0] || 'user',
+            role: UserRole.SELLER // Default role
+          };
+
+          const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
+
+          if (!insertError) {
+            setUserProfile(newProfile);
+            if (newProfile.role === UserRole.SELLER) setActiveTab('pos');
+            return;
+          }
+        }
+
+        // Final fallback if creation fails
         await supabase.auth.signOut();
       }
     } catch (e) {
