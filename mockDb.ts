@@ -42,7 +42,7 @@ const initializeDefaults = () => {
             username: 'admin',
             role: UserRole.ADMIN,
             password_hash: 'admin', // Em produção seria hash real, aqui é simulação
-            created_at: new Date().toISOString()
+            password_hash: 'admin', // Em produção seria hash real, aqui é simulação
         };
         setStorage(STORAGE_KEYS.USERS, [adminUser]);
     }
@@ -85,6 +85,41 @@ export const mockSupabase = {
                 return { data: { user: session.user, session }, error: null };
             }
             return { data: { user: null, session: null }, error: { message: 'Credenciais inválidas' } };
+        },
+        signUp: async ({ email, password, options }: any) => {
+            await delay(500);
+            const users = getStorage<User[]>(STORAGE_KEYS.USERS, []);
+
+            if (users.find(u => u.email === email)) {
+                return { data: { user: null, session: null }, error: { message: 'Usuário já existe' } };
+            }
+
+            const newUser: User = {
+                id: crypto.randomUUID(),
+                email: email,
+                name: options?.data?.full_name || 'Novo Usuário',
+                username: email.split('@')[0],
+                role: options?.data?.role || UserRole.SELLER,
+                password_hash: password, // Em produção seria hash
+                password_hash: password, // Em produção seria hash
+            };
+
+            // Salva no storage (simulando trigger de banco ou insert direto)
+            // No mundo real, o signUp cria no Auth e um trigger cria na tabela public.users
+            // Aqui vamos simular isso salvando no array de users se não existir
+
+            // Nota: O frontend chama DB.saveUser depois, mas o signUp precisa retornar o user
+            // Vamos retornar o user mockado
+
+            const session = {
+                access_token: 'mock-token-' + Date.now(),
+                token_type: 'bearer',
+                expires_in: 3600,
+                refresh_token: 'mock-refresh-' + Date.now(),
+                user: { id: newUser.id, email: newUser.email, user_metadata: { ...newUser } }
+            };
+
+            return { data: { user: session.user, session }, error: null };
         },
         signOut: async () => {
             await delay(200);
