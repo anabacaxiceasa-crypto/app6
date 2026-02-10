@@ -61,8 +61,7 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // BACKDOOR GUARD: Se for o admin local, não valida sessão no Supabase
-    if (session?.user?.id === 'master-admin-local') return;
+
 
     DB.getSettings().then(setSettings);
 
