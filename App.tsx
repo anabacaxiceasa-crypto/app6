@@ -94,8 +94,8 @@ const App: React.FC = () => {
       let profile = users.find(u => u.id === userId);
 
       if (profile) {
-        // Auto-Admin: Hardcode 'ademymoreira@hotmail.com' as ADMIN if not already
-        if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
+        // Auto-Admin: Hardcode 'fgmanutencaoeservicos@gmail.com' as ADMIN if not already
+        if (profile.email === 'fgmanutencaoeservicos@gmail.com' && profile.role !== UserRole.ADMIN) {
           profile.role = UserRole.ADMIN;
           await DB.saveUser(profile);
         }
@@ -109,7 +109,7 @@ const App: React.FC = () => {
         // Auto-healing: Create profile if missing
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const isAdmin = user.email === 'ademymoreira@hotmail.com';
+          const isAdmin = user.email === 'fgmanutencaoeservicos@gmail.com';
           const newProfile = {
             id: user.id,
             email: user.email!,
@@ -156,7 +156,7 @@ const App: React.FC = () => {
 
         if (data.user) {
           // Manually create profile immediately to ensure consistency
-          const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
+          const isAdmin = data.user.email === 'fgmanutencaoeservicos@gmail.com';
           const newProfile = {
             id: data.user.id,
             email: data.user.email!,
