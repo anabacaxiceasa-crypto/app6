@@ -43,24 +43,54 @@ export const DB = {
     getUsers: async (): Promise<User[]> => {
         const { data, error } = await supabase
             .from('nikeflow_users')
-            .select('*');
+            .select('*, user_roles(role)');
 
         if (error) {
             console.error('Error fetching users:', error);
             return [];
         }
-        return data as User[];
+
+        return data.map((user: any) => ({
+            ...user,
+            // Prioritize role from user_roles, fallback to existing column or default
+            role: user.user_roles?.[0]?.role || user.role || UserRole.SELLER
+        })) as User[];
     },
 
     saveUser: async (user: User) => {
-        const { error } = await supabase
-            .from('nikeflow_users')
-            .upsert(user);
+        // 1. Save profile data
+        const { role, ...profileData } = user;
 
-        if (error) console.error('Error saving user:', error);
+        const { error: profileError } = await supabase
+            .from('nikeflow_users')
+            .upsert(profileData);
+
+        if (profileError) {
+            console.error('Error saving user profile:', profileError);
+            return;
+        }
+
+        // 2. Save Role (Delete old roles for this user first to ensure single role per user logic for now)
+        if (role) {
+            // Remove existing roles
+            await supabase
+                .from('user_roles')
+                .delete()
+                .eq('user_id', user.id);
+
+            // Insert new role
+            const { error: roleError } = await supabase
+                .from('user_roles')
+                .insert({ user_id: user.id, role: role });
+
+            if (roleError) console.error('Error saving user role:', roleError);
+        }
     },
 
     deleteUser: async (id: string) => {
+        // Cascade delete should handle user_roles if configured, but let's be safe
+        await supabase.from('user_roles').delete().eq('user_id', id);
+
         const { error } = await supabase
             .from('nikeflow_users')
             .delete()
