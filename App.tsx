@@ -192,6 +192,8 @@ const App: React.FC = () => {
         if (data.user) {
           let { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
 
+          let creationError = null;
+
           // AUTO-HEALING: Se não existir perfil, criar agora antes de validar
           if (!profile) {
             const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
@@ -203,8 +205,12 @@ const App: React.FC = () => {
               role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
             };
             const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
+
             if (!insertError) {
               profile = newProfile;
+            } else {
+              creationError = insertError;
+              console.error("Erro ao criar perfil:", insertError);
             }
           }
 
@@ -238,7 +244,7 @@ const App: React.FC = () => {
           } else {
             await supabase.auth.signOut();
             await supabase.auth.signOut();
-            setError('Conta não vinculada. Por favor, faça login como Admin e clique em "Reparar Banco" nas Configurações.');
+            setError('Falha ao vincular conta. Erro no banco: ' + (creationError?.message || 'Perfil não encontrado (Tabela vazia ou RLS bloqueando).'));
           }
         }
       }
