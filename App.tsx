@@ -94,12 +94,6 @@ const App: React.FC = () => {
       let profile = users.find(u => u.id === userId);
 
       if (profile) {
-        // Auto-Admin: Hardcode 'fgmanutencaoeservicos@gmail.com' as ADMIN if not already
-        if (profile.email === 'fgmanutencaoeservicos@gmail.com' && profile.role !== UserRole.ADMIN) {
-          profile.role = UserRole.ADMIN;
-          await DB.saveUser(profile);
-        }
-
         setUserProfile(profile);
         // Garantia de segurança: Se for vendedor, redireciona pro PDV
         if (profile.role === UserRole.SELLER) {
@@ -109,13 +103,12 @@ const App: React.FC = () => {
         // Auto-healing: Create profile if missing
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const isAdmin = user.email === 'fgmanutencaoeservicos@gmail.com';
           const newProfile = {
             id: user.id,
             email: user.email!,
-            name: form.name || (isAdmin ? 'Administrador' : 'Novo Usuário'),
+            name: form.name || 'Novo Usuário',
             username: user.email?.split('@')[0] || 'user',
-            role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
+            role: UserRole.SELLER // Default to SELLER
           };
 
           // Use DB.saveUser instead of supabase.insert
@@ -156,13 +149,12 @@ const App: React.FC = () => {
 
         if (data.user) {
           // Manually create profile immediately to ensure consistency
-          const isAdmin = data.user.email === 'fgmanutencaoeservicos@gmail.com';
           const newProfile = {
             id: data.user.id,
             email: data.user.email!,
-            name: form.name || (isAdmin ? 'Administrador' : 'Novo Usuário'),
+            name: form.name || 'Novo Usuário',
             username: data.user.email?.split('@')[0] || 'user',
-            role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
+            role: UserRole.SELLER // Default to SELLER
           };
 
           await DB.saveUser(newProfile);
@@ -190,38 +182,39 @@ const App: React.FC = () => {
         }
 
         if (data.user) {
-          let { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
+          // We use DB.getUsers in fetchProfile, but here we might need to check immediately
+          // or just let the effect handle it.
+          // Ideally we wait for the effect, but the original code had inline checks.
+          // Let's rely on fetchProfile which is called by the effect or check if we need to do it here.
+          // The original code did a manual check here. Let's replicate but with DB abstraction if possible,
+          // or just simple query to get roles.
+
+          // Actually, let's simplify. If login succeeds, we let the useEffect trigger fetchProfile 
+          // which sets the userProfile. 
+          // But we need to handle the "Account not linked" case if we want to be robust.
+
+          const users = await DB.getUsers();
+          let profile = users.find(u => u.id === data.user.id);
 
           let creationError = null;
 
           // AUTO-HEALING: Se não existir perfil, criar agora antes de validar
           if (!profile) {
-            const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
             const newProfile = {
               id: data.user.id,
               email: data.user.email!,
-              name: isAdmin ? 'Administrador' : 'Novo Usuário',
+              name: 'Novo Usuário',
               username: data.user.email?.split('@')[0] || 'user',
-              role: isAdmin ? UserRole.ADMIN : UserRole.SELLER,
-              password_hash: 'supabase-auth' // Dummy value to satisfy NOT NULL constraint
+              role: UserRole.SELLER,
+              password_hash: 'supabase-auth'
             };
-            const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
 
-            if (!insertError) {
-              profile = newProfile;
-            } else {
-              creationError = insertError;
-              console.error("Erro ao criar perfil:", insertError);
-            }
+            // We use DB.saveUser to ensure it goes to user_roles too
+            await DB.saveUser(newProfile);
+            profile = newProfile;
           }
 
           if (profile) {
-            // Auto-Admin Grant (Duplicate check to be safe)
-            if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
-              await supabase.from('nikeflow_users').update({ role: UserRole.ADMIN }).eq('id', profile.id);
-              profile.role = UserRole.ADMIN;
-            }
-
             // Check de Role forçado
             if (authRole === 'admin' && !([UserRole.ADMIN, UserRole.FINANCIAL] as string[]).includes(profile.role)) {
               await supabase.auth.signOut();
@@ -244,8 +237,7 @@ const App: React.FC = () => {
             }
           } else {
             await supabase.auth.signOut();
-            await supabase.auth.signOut();
-            setError('Falha ao vincular conta. Erro no banco: ' + (creationError?.message || 'Perfil não encontrado (Tabela vazia ou RLS bloqueando).'));
+            setError('Falha ao vincular conta. Erro no banco e auto-healing falhou.');
           }
         }
       }
