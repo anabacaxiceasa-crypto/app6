@@ -196,9 +196,12 @@ const UserManagement: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full flex items-center gap-1 
-                    ${user.role === UserRole.ADMIN ? 'bg-nike/10 text-nike' : 'bg-zinc-800 text-zinc-500'}`}>
-                    {user.role === UserRole.ADMIN ? <ShieldCheck size={10} /> : <ShieldAlert size={10} />}
-                    {user.role === UserRole.ADMIN ? 'ADMIN MASTER' : 'VENDEDOR'}
+                    ${user.role === UserRole.ADMIN ? 'bg-nike/10 text-nike' :
+                      user.role === UserRole.FINANCIAL ? 'bg-blue-500/10 text-blue-500' : 'bg-zinc-800 text-zinc-500'}`}>
+                    {user.role === UserRole.ADMIN ? <ShieldCheck size={10} /> :
+                      user.role === UserRole.FINANCIAL ? <Wallet size={10} /> : <ShieldAlert size={10} />}
+                    {user.role === UserRole.ADMIN ? 'ADMIN MASTER' :
+                      user.role === UserRole.FINANCIAL ? 'FINANCEIRO' : 'VENDEDOR'}
                   </span>
                 </div>
               </div>
@@ -287,6 +290,7 @@ const UserManagement: React.FC = () => {
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
                   >
                     <option value={UserRole.SELLER}>VENDEDOR (Operacional)</option>
+                    <option value={UserRole.FINANCIAL}>FINANCEIRO (Gerencial)</option>
                     <option value={UserRole.ADMIN}>ADMINISTRADOR (Controle Total)</option>
                   </select>
                 </div>
@@ -393,6 +397,7 @@ const UserManagement: React.FC = () => {
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
                   >
                     <option value={UserRole.SELLER}>VENDEDOR (Operacional)</option>
+                    <option value={UserRole.FINANCIAL}>FINANCEIRO (Gerencial)</option>
                     <option value={UserRole.ADMIN}>ADMINISTRADOR (Controle Total)</option>
                   </select>
                 </div>

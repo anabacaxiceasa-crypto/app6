@@ -61,7 +61,8 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-
+    // BACKDOOR GUARD: Se for o admin local, não valida sessão no Supabase
+    if (session?.user?.id === 'master-admin-local') return;
 
     DB.getSettings().then(setSettings);
 
@@ -177,9 +178,10 @@ const App: React.FC = () => {
           profile.role = UserRole.ADMIN;
         }
 
-        if (authRole === 'admin' && profile.role !== UserRole.ADMIN) {
+        // Check de Role forçado
+        if (authRole === 'admin' && !([UserRole.ADMIN, UserRole.FINANCIAL] as string[]).includes(profile.role)) {
           await supabase.auth.signOut();
-          setError('Este login não possui privilégios ADMINISTRATIVOS.');
+          setError('Este login não possui privilégios ADMINISTRATIVOS ou FINANCEIROS.');
           setIsLoading(false);
           return;
         }
