@@ -24,10 +24,26 @@ export const DB = {
         const { data, error } = await supabase
             .from('nikeflow_settings')
             .select('*')
-            .single();
+            .maybeSingle();
 
-        if (error || !data) {
+        if (error) {
+            console.error('Error fetching settings:', error);
             return { id: 'default', app_name: 'A.M ABACAXI', maintenance_mode: false, total_crates: 0 };
+        }
+
+        if (!data) {
+            // Initialize default settings if none exist
+            const defaultSettings: SystemSettings = {
+                id: 'default',
+                app_name: 'A.M ABACAXI',
+                maintenance_mode: false,
+                total_crates: 0
+            };
+            // detached execution so we don't wait for it
+            supabase.from('nikeflow_settings').upsert(defaultSettings).then(({ error }) => {
+                if (error) console.error('Error initializing default settings:', error);
+            });
+            return defaultSettings;
         }
         return data as SystemSettings;
     },
