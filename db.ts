@@ -41,7 +41,14 @@ export const DB = {
             };
             // detached execution so we don't wait for it
             supabase.from('nikeflow_settings').upsert(defaultSettings).then(({ error }) => {
-                if (error) console.error('Error initializing default settings:', error);
+                if (error) {
+                    // Suppress excessive logging for permission errors (RLS) on read-only endpoints
+                    if (error.code === '42501' || error.message?.includes('violates row-level security')) {
+                        console.warn('Using default settings locally (DB initialization restricted by permissions).');
+                    } else {
+                        console.error('Error initializing default settings:', JSON.stringify(error, null, 2));
+                    }
+                }
             });
             return defaultSettings;
         }
