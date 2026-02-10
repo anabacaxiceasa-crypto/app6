@@ -4,13 +4,8 @@ import { User, Product, Customer, Sale, UserRole, DamagedGood, SystemSettings, S
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log("Initializing Supabase Client...");
-console.log("URL:", supabaseUrl);
-console.log("Key Length:", supabaseAnonKey?.length);
-console.log("Key Start:", supabaseAnonKey?.substring(0, 5));
-
 if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("FATAL: Missing Supabase URL or Anon Key. Check .env.local");
+    console.error("Missing Supabase URL or Anon Key");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
