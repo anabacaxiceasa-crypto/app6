@@ -177,10 +177,9 @@ const App: React.FC = () => {
           profile.role = UserRole.ADMIN;
         }
 
-        // Check de Role forçado
-        if (authRole === 'admin' && !([UserRole.ADMIN, UserRole.FINANCIAL] as string[]).includes(profile.role)) {
+        if (authRole === 'admin' && profile.role !== UserRole.ADMIN) {
           await supabase.auth.signOut();
-          setError('Este login não possui privilégios ADMINISTRATIVOS ou FINANCEIROS.');
+          setError('Este login não possui privilégios ADMINISTRATIVOS.');
           setIsLoading(false);
           return;
         }

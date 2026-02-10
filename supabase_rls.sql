@@ -23,11 +23,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to check if user is admin or financial
-CREATE OR REPLACE FUNCTION public.is_admin_or_financial()
+-- Function to check if user is admin
+CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean AS $$
 BEGIN
-  RETURN (SELECT role IN ('ADMIN', 'FINANCIAL') FROM public.nikeflow_users WHERE id = auth.uid());
+  RETURN (SELECT role = 'ADMIN' FROM public.nikeflow_users WHERE id = auth.uid());
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -36,100 +36,119 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ==============================================================================
 
 -- 1. USERS TABLE (nikeflow_users)
--- Everyone can read users (needed for login checks and displaying names)
+-- READ: Everyone (needed for login and display)
 CREATE POLICY "Enable read access for authenticated users" 
 ON public.nikeflow_users FOR SELECT 
 TO authenticated 
 USING (true);
 
--- Only Admins can update roles or delete users
-CREATE POLICY "Admins can update users" 
-ON public.nikeflow_users FOR UPDATE 
+-- WRITE (Insert/Update/Delete): Admins can do anything
+CREATE POLICY "Admins can manage all users" 
+ON public.nikeflow_users FOR ALL 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
 
--- Users can update their own profile (e.g. password, name)
-CREATE POLICY "Users can update own profile" 
-ON public.nikeflow_users FOR UPDATE 
+-- SELF-HEALING/SELF-UPDATE: Users can insert/update their own profile
+CREATE POLICY "Users can manage own profile" 
+ON public.nikeflow_users FOR ALL 
 TO authenticated 
-USING (auth.uid() = id);
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
 
 -- 2. PRODUCTS TABLE (nikeflow_products)
--- Everyone read
+-- READ: Everyone
 CREATE POLICY "Enable read access for all users" 
 ON public.nikeflow_products FOR SELECT 
 TO authenticated 
 USING (true);
 
--- Only Admin/Financial can insert/update/delete
-CREATE POLICY "Admins/Financial can manage products" 
-ON public.nikeflow_products FOR ALL 
+-- INSERT/DELETE: Admin Only
+CREATE POLICY "Admins can insert/delete products" 
+ON public.nikeflow_products FOR INSERT 
 TO authenticated 
-USING (is_admin_or_financial());
+WITH CHECK (is_admin());
+
+CREATE POLICY "Admins can delete products" 
+ON public.nikeflow_products FOR DELETE 
+TO authenticated 
+USING (is_admin());
+
+-- UPDATE: Admins (Full) OR Sellers (Stock updates)
+-- WARNING: Giving UPDATE to Sellers is needed for client-side stock deduction.
+-- Ideally, use a Database Trigger or RPC for this.
+CREATE POLICY "Admins or Sellers can update products" 
+ON public.nikeflow_products FOR UPDATE 
+TO authenticated 
+USING (true) 
+WITH CHECK (true);
 
 -- 3. CUSTOMERS TABLE (nikeflow_customers)
--- Everyone read
+-- READ: Everyone
 CREATE POLICY "Enable read access for all users" 
 ON public.nikeflow_customers FOR SELECT 
 TO authenticated 
 USING (true);
 
--- Only Admin/Financial can insert/update/delete
--- NOTE: Sellers might need to create customers? If so, change this.
--- Assuming Sellers can CREATE customers for sales:
+-- INSERT: Sellers need to create customers
 CREATE POLICY "Sellers can create customers" 
 ON public.nikeflow_customers FOR INSERT 
 TO authenticated 
 WITH CHECK (true);
 
-CREATE POLICY "Admins/Financial can manage customers" 
-ON public.nikeflow_customers FOR ALL 
+-- UPDATE: Sellers need to update crates balance
+CREATE POLICY "Admins or Sellers can update customers" 
+ON public.nikeflow_customers FOR UPDATE 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (true)
+WITH CHECK (true);
+
+-- DELETE: Admin Only
+CREATE POLICY "Admins can delete customers" 
+ON public.nikeflow_customers FOR DELETE 
+TO authenticated 
+USING (is_admin());
 
 -- 4. SALES TABLE (nikeflow_sales)
--- Everyone read (Sellers need to see history/dashboard)
+-- READ: Everyone
 CREATE POLICY "Enable read access for all users" 
 ON public.nikeflow_sales FOR SELECT 
 TO authenticated 
 USING (true);
 
--- Sellers can INSERT sales
+-- INSERT: Sellers
 CREATE POLICY "Sellers can create sales" 
 ON public.nikeflow_sales FOR INSERT 
 TO authenticated 
 WITH CHECK (true);
 
--- Only Admin/Financial can DELETE sales
-CREATE POLICY "Admins/Financial can delete sales" 
+-- DELETE: Admin Only
+CREATE POLICY "Admins can delete sales" 
 ON public.nikeflow_sales FOR DELETE 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
 
--- Only Admin/Financial can UPDATE sales (e.g. cancel, mark paid if restricted)
--- Exception: Sellers might need to mark as paid immediately?
--- Let's allow UPDATE for owner (Seller) OR Admin
-CREATE POLICY "Admins/Financial or Owner can update sales" 
+-- UPDATE: Admin or Owner (e.g. to Cancel or mark Paid)
+CREATE POLICY "Admins or Owner can update sales" 
 ON public.nikeflow_sales FOR UPDATE 
 TO authenticated 
-USING (is_admin_or_financial() OR auth.uid()::text = "sellerId");
+USING (is_admin() OR auth.uid()::text = "sellerId");
 
 -- 5. FINANCIAL TABLES (Expenses, Payments, Payment Methods)
--- STRICT: Only Admin/Financial
+-- STRICT: Only Admin
 CREATE POLICY "Restricted access to financial tables" 
 ON public.nikeflow_expenses FOR ALL 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
 
 CREATE POLICY "Restricted access to payment methods" 
 ON public.nikeflow_payment_methods FOR ALL 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
 
 CREATE POLICY "Restricted access to customer payments" 
 ON public.nikeflow_customer_payments FOR ALL 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
 
 -- 6. SETTINGS TABLE (nikeflow_settings)
 -- Read: Everyone
@@ -142,11 +161,11 @@ USING (true);
 CREATE POLICY "Admins can update settings" 
 ON public.nikeflow_settings FOR UPDATE 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
 
 -- 7. DAMAGED GOODS
--- Admin/Financial manage
-CREATE POLICY "Admins/Financial manage damaged goods" 
+-- Admin manage
+CREATE POLICY "Admins manage damaged goods" 
 ON public.nikeflow_damaged FOR ALL 
 TO authenticated 
-USING (is_admin_or_financial());
+USING (is_admin());
