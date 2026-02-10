@@ -138,30 +138,8 @@ const App: React.FC = () => {
 
 
     // BACKDOOR: Admin Master Access
-    if (form.email.trim().toLowerCase() === 'admin' && form.password.trim().toLowerCase() === 'admin') {
-      const mockUser = {
-        id: 'master-admin-local',
-        email: 'admin@sistema.com',
-        role: UserRole.ADMIN
-      };
-
-      setSession({
-        access_token: 'mock-token',
-        token_type: 'bearer',
-        expires_in: 3600,
-        refresh_token: 'mock-refresh',
-        user: mockUser
-      });
-
-      setUserProfile({
-        ...mockUser,
-        name: 'Administrador Master',
-        username: 'master'
-      });
-
-      setIsLoading(false);
-      return;
-    }
+    // BACKDOOR REMOVED: Using robust mockSupabase flow instead
+    // if (form.email.trim().toLowerCase() === 'admin' && form.password.trim().toLowerCase() === 'admin') { ... }
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: form.email.trim(),
