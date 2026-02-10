@@ -202,7 +202,8 @@ const App: React.FC = () => {
               email: data.user.email!,
               name: isAdmin ? 'Administrador' : 'Novo Usuário',
               username: data.user.email?.split('@')[0] || 'user',
-              role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
+              role: isAdmin ? UserRole.ADMIN : UserRole.SELLER,
+              password_hash: 'supabase-auth' // Dummy value to satisfy NOT NULL constraint
             };
             const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
 
