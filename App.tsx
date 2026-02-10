@@ -55,9 +55,11 @@ const App: React.FC = () => {
   const [error, setError] = useState('');
   const [settings, setSettings] = useState<SystemSettings>({ id: 'default', app_name: 'A.M ABACAXI', maintenance_mode: false });
 
+  const [isSignUp, setIsSignUp] = useState(false);
   const [form, setForm] = useState({
     email: '',
-    password: ''
+    password: '',
+    name: ''
   });
 
   useEffect(() => {
@@ -66,10 +68,12 @@ const App: React.FC = () => {
 
     DB.getSettings().then(setSettings);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       if (session) fetchProfile(session.user.id);
-    });
+    };
+    checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -109,7 +113,7 @@ const App: React.FC = () => {
           const newProfile = {
             id: user.id,
             email: user.email!,
-            name: isAdmin ? 'Administrador' : 'Novo Usuário',
+            name: form.name || (isAdmin ? 'Administrador' : 'Novo Usuário'),
             username: user.email?.split('@')[0] || 'user',
             role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
           };
@@ -135,76 +139,115 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError('');
 
+    try {
+      if (isSignUp) {
+        // REGISTRATION FLOW
+        const { data, error: authError } = await supabase.auth.signUp({
+          email: form.email.trim(),
+          password: form.password,
+          options: {
+            data: {
+              full_name: form.name
+            }
+          }
+        });
 
+        if (authError) throw authError;
 
-    // BACKDOOR: Admin Master Access
-    // BACKDOOR REMOVED: Using robust mockSupabase flow instead
-    // if (form.email.trim().toLowerCase() === 'admin' && form.password.trim().toLowerCase() === 'admin') { ... }
+        if (data.user) {
+          // Manually create profile immediately to ensure consistency
+          const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
+          const newProfile = {
+            id: data.user.id,
+            email: data.user.email!,
+            name: form.name || (isAdmin ? 'Administrador' : 'Novo Usuário'),
+            username: data.user.email?.split('@')[0] || 'user',
+            role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
+          };
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: form.email.trim(),
-      password: form.password
-    });
+          await DB.saveUser(newProfile);
 
-    if (authError) {
-      setError('Acesso negado. Verifique e-mail e senha.');
-      setIsLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      let { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
-
-      // AUTO-HEALING: Se não existir perfil, criar agora antes de validar
-      if (!profile) {
-        const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
-        const newProfile = {
-          id: data.user.id,
-          email: data.user.email,
-          name: isAdmin ? 'Administrador' : 'Novo Usuário',
-          username: data.user.email?.split('@')[0] || 'user',
-          role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
-        };
-        const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
-        if (!insertError) {
-          profile = newProfile;
-        }
-      }
-
-      if (profile) {
-        // Auto-Admin Grant (Duplicate check to be safe)
-        if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
-          await supabase.from('nikeflow_users').update({ role: UserRole.ADMIN }).eq('id', profile.id);
-          profile.role = UserRole.ADMIN;
-        }
-
-        // Check de Role forçado
-        if (authRole === 'admin' && !([UserRole.ADMIN, UserRole.FINANCIAL] as string[]).includes(profile.role)) {
-          await supabase.auth.signOut();
-          setError('Este login não possui privilégios ADMINISTRATIVOS ou FINANCEIROS.');
-          setIsLoading(false);
-          return;
-        }
-        if (authRole === 'seller' && profile.role !== UserRole.SELLER) {
-          await supabase.auth.signOut();
-          setError('Login MASTER detectado. Use o portal administrativo.');
-          setIsLoading(false);
-          return;
-        }
-        // Check de Manutenção
-        if (profile.role === UserRole.SELLER && settings.maintenance_mode) {
-          await supabase.auth.signOut();
-          setError('SISTEMA EM MANUTENÇÃO. Contate o administrador.');
-          setIsLoading(false);
-          return;
+          // Check if email confirmation is required (session might be null)
+          if (!data.session) {
+            alert("Cadastro realizado! Verifique seu e-mail para confirmar a conta.");
+            setIsSignUp(false); // Switch back to login
+            setIsLoading(false);
+            return;
+          }
+          // If session exists (auto-confirm enabled), usage continues...
         }
       } else {
-        await supabase.auth.signOut();
-        await supabase.auth.signOut();
-        setError('Conta não vinculada. Por favor, faça login como Admin e clique em "Reparar Banco" nas Configurações.');
+        // LOGIN FLOW
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: form.email.trim(),
+          password: form.password
+        });
+
+        if (authError) {
+          setError('Acesso negado. Verifique e-mail e senha.');
+          setIsLoading(false);
+          return;
+        }
+
+        if (data.user) {
+          let { data: profile } = await supabase.from('nikeflow_users').select('*').eq('id', data.user.id).single();
+
+          // AUTO-HEALING: Se não existir perfil, criar agora antes de validar
+          if (!profile) {
+            const isAdmin = data.user.email === 'ademymoreira@hotmail.com';
+            const newProfile = {
+              id: data.user.id,
+              email: data.user.email!,
+              name: isAdmin ? 'Administrador' : 'Novo Usuário',
+              username: data.user.email?.split('@')[0] || 'user',
+              role: isAdmin ? UserRole.ADMIN : UserRole.SELLER
+            };
+            const { error: insertError } = await supabase.from('nikeflow_users').insert([newProfile]);
+            if (!insertError) {
+              profile = newProfile;
+            }
+          }
+
+          if (profile) {
+            // Auto-Admin Grant (Duplicate check to be safe)
+            if (profile.email === 'ademymoreira@hotmail.com' && profile.role !== UserRole.ADMIN) {
+              await supabase.from('nikeflow_users').update({ role: UserRole.ADMIN }).eq('id', profile.id);
+              profile.role = UserRole.ADMIN;
+            }
+
+            // Check de Role forçado
+            if (authRole === 'admin' && !([UserRole.ADMIN, UserRole.FINANCIAL] as string[]).includes(profile.role)) {
+              await supabase.auth.signOut();
+              setError('Este login não possui privilégios ADMINISTRATIVOS ou FINANCEIROS.');
+              setIsLoading(false);
+              return;
+            }
+            if (authRole === 'seller' && profile.role !== UserRole.SELLER) {
+              await supabase.auth.signOut();
+              setError('Login MASTER detectado. Use o portal administrativo.');
+              setIsLoading(false);
+              return;
+            }
+            // Check de Manutenção
+            if (profile.role === UserRole.SELLER && settings.maintenance_mode) {
+              await supabase.auth.signOut();
+              setError('SISTEMA EM MANUTENÇÃO. Contate o administrador.');
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            await supabase.auth.signOut();
+            await supabase.auth.signOut();
+            setError('Conta não vinculada. Por favor, faça login como Admin e clique em "Reparar Banco" nas Configurações.');
+          }
+        }
       }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Erro ao processar solicitação.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSignOut = async () => {
@@ -278,6 +321,19 @@ const App: React.FC = () => {
             <div className="p-10">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
+                  {isSignUp && (
+                    <div className="relative group animate-in slide-in-from-top-2 fade-in duration-300">
+                      <UserIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-nike transition-colors" size={20} />
+                      <input
+                        type="text"
+                        placeholder="Seu Nome Completo"
+                        className="w-full bg-black border border-zinc-800 rounded-3xl p-6 pl-16 text-sm font-bold focus:border-nike outline-none transition-all placeholder:text-zinc-800"
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        required={isSignUp}
+                      />
+                    </div>
+                  )}
                   <div className="relative group">
                     <UserIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-nike transition-colors" size={20} />
                     <input
@@ -319,11 +375,25 @@ const App: React.FC = () => {
                 >
                   {isLoading ? <Loader2 className="animate-spin" size={28} /> : (
                     <>
-                      {authRole === 'admin' ? 'ENTRAR COMO MASTER' : 'INICIAR TURNO'}
+                      {isSignUp ? 'CRIAR CONTA' : (authRole === 'admin' ? 'ENTRAR COMO MASTER' : 'INICIAR TURNO')}
                       <ArrowRight size={28} />
                     </>
                   )}
                 </button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setError('');
+                    }}
+                    className="text-zinc-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest"
+                  >
+                    {isSignUp ? 'Já tem uma conta? Entrar' : 'Não tem conta? Cadastre-se'}
+                  </button>
+                </div>
+
               </form>
             </div>
           </div>
