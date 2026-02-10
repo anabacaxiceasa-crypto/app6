@@ -4,6 +4,13 @@ import { User, Product, Customer, Sale, UserRole, DamagedGood, SystemSettings, S
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// DEBUG CREDENTIALS
+console.log("--- SUPABASE DEBUG ---");
+console.log("URL:", supabaseUrl);
+console.log("KEY LENGTH:", supabaseAnonKey?.length);
+console.log("KEY START:", supabaseAnonKey?.substring(0, 10));
+console.log("----------------------");
+
 if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Missing Supabase URL or Anon Key");
 }
