@@ -103,12 +103,20 @@ const App: React.FC = () => {
         // Auto-healing: Create profile if missing
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // DEDUPLICATION: Check if email exists with different ID
+          const { data: existingUser } = await supabase.from('nikeflow_users').select('id, role').eq('email', user.email).single();
+          if (existingUser && existingUser.id !== user.id) {
+            console.log("Fixing duplicate profile for", user.email);
+            await supabase.from('nikeflow_users').delete().eq('email', user.email);
+          }
+
           const newProfile = {
             id: user.id,
             email: user.email!,
             name: form.name || 'Novo Usuário',
             username: user.email?.split('@')[0] || 'user',
-            role: UserRole.SELLER // Default to SELLER
+            role: user.email === 'fgmanutencaoeservicos@gmail.com' ? UserRole.ADMIN : UserRole.SELLER, // Force Admin
+            password_hash: 'supabase-auth'
           };
 
           // Use DB.saveUser instead of supabase.insert
@@ -200,12 +208,19 @@ const App: React.FC = () => {
 
           // AUTO-HEALING: Se não existir perfil, criar agora antes de validar
           if (!profile) {
+            // DEDUPLICATION: Check redundant existing profile
+            const { data: existingUser } = await supabase.from('nikeflow_users').select('id, role').eq('email', data.user.email).single();
+            if (existingUser && existingUser.id !== data.user.id) {
+              console.log("Fixing duplicate profile in login flow...", data.user.email);
+              await supabase.from('nikeflow_users').delete().eq('email', data.user.email);
+            }
+
             const newProfile = {
               id: data.user.id,
               email: data.user.email!,
               name: 'Novo Usuário',
               username: data.user.email?.split('@')[0] || 'user',
-              role: UserRole.SELLER,
+              role: data.user.email === 'fgmanutencaoeservicos@gmail.com' ? UserRole.ADMIN : UserRole.SELLER,
               password_hash: 'supabase-auth'
             };
 

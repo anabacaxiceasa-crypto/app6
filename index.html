@@ -4,6 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https:;
+        connect-src 'self' https://esm.sh https://dcnkwosckxryjiwbtklx.supabase.co wss://dcnkwosckxryjiwbtklx.supabase.co https://generativelanguage.googleapis.com;
+    ">
     <title>App6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <object data="" type=""></object>
