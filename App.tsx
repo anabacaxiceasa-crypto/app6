@@ -94,6 +94,12 @@ const App: React.FC = () => {
       let profile = users.find(u => u.id === userId);
 
       if (profile) {
+        // Enforce Admin Role for Master Email
+        if (profile.email === 'fgmanutencaoeservicos@gmail.com' && profile.role !== UserRole.ADMIN) {
+          profile.role = UserRole.ADMIN;
+          await DB.saveUser(profile);
+        }
+
         setUserProfile(profile);
         // Garantia de segurança: Se for vendedor, redireciona pro PDV
         if (profile.role === UserRole.SELLER) {
@@ -193,8 +199,7 @@ const App: React.FC = () => {
           // We use DB.getUsers in fetchProfile, but here we might need to check immediately
           // or just let the effect handle it.
           // Ideally we wait for the effect, but the original code had inline checks.
-          // Let's rely on fetchProfile which is called by the effect or check if we need to do it here.
-          // The original code did a manual check here. Let's replicate but with DB abstraction if possible,
+          // Let's replicate but with DB abstraction if possible,
           // or just simple query to get roles.
 
           // Actually, let's simplify. If login succeeds, we let the useEffect trigger fetchProfile 
@@ -230,6 +235,12 @@ const App: React.FC = () => {
           }
 
           if (profile) {
+            // Enforce Admin Role for Master Email
+            if (profile.email === 'fgmanutencaoeservicos@gmail.com' && profile.role !== UserRole.ADMIN) {
+              profile.role = UserRole.ADMIN;
+              await DB.saveUser(profile);
+            }
+
             // Check de Role forçado
             if (authRole === 'admin' && !([UserRole.ADMIN, UserRole.FINANCIAL] as string[]).includes(profile.role)) {
               await supabase.auth.signOut();
